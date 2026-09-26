@@ -9,14 +9,14 @@ export interface R2Config {
 }
 
 export const DEFAULT_R2_CONFIG: R2Config = {
-  accountId: '9464150f1460753b2fea2697cd7c71f1',
-  bucketName: 'imagenes-web',
-  accessKeyId: '13e89e9e0cc4aeed6e61792c4064df72',
-  secretAccessKey: 'f29e63ae3c1a56ea9ced45d21deb639d1ed8e4ae5f7acfdfcc5b3017fce74612',
-  publicDomain: 'https://pub-0bf9a87cec964ff49bfd058873c948c3.r2.dev',
+  accountId: import.meta.env.VITE_R2_ACCOUNT_ID || '',
+  bucketName: import.meta.env.VITE_R2_BUCKET_NAME || '',
+  accessKeyId: import.meta.env.VITE_R2_ACCESS_KEY_ID || '',
+  secretAccessKey: import.meta.env.VITE_R2_SECRET_ACCESS_KEY || '',
+  publicDomain: import.meta.env.VITE_R2_PUBLIC_DOMAIN || '',
 };
 
-// Retrieve config from localStorage or fallback to default
+// Retrieve config from localStorage (with fallback to env variables)
 export const getR2Config = (): R2Config => {
   try {
     const saved = localStorage.getItem('tokkii_r2_config');
@@ -38,6 +38,10 @@ export const saveR2Config = (config: R2Config) => {
 };
 
 export const createR2Client = (config: R2Config = getR2Config()): S3Client => {
+  if (!config.accountId || !config.accessKeyId || !config.secretAccessKey) {
+    throw new Error('Credenciales de Cloudflare R2 no configuradas. Configura tus variables .env o ajustes.');
+  }
+
   return new S3Client({
     region: 'auto',
     endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
