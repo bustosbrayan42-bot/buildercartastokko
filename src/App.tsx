@@ -15,14 +15,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Copy,
-  CloudUpload,
-  Loader2
+  Copy
 } from 'lucide-react';
 import {
   fetchCardsFromSupabase,
-  syncAllCardsToSupabase,
-  saveCardToSupabase
+  syncAllCardsToSupabase
 } from './utils/supabaseClient';
 
 export function App() {

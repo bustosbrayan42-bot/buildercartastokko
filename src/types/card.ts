@@ -49,6 +49,7 @@ export interface CardData {
   customHoloStyle?: HoloStyle;
   customFoilOpacity?: number; // 0 to 1
   customGlareOpacity?: number; // 0 to 1
+  customMaskOpacity?: number; // 0 to 1
   dateAdded?: string;
   tags: string[];
 }

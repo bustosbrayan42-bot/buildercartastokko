@@ -13,7 +13,6 @@ import {
   Edit3,
   Sparkles,
   X,
-  Database,
   CloudUpload,
   FileText,
   Loader2
