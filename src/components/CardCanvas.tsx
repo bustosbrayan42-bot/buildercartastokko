@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback } from 'react';
 import type { CardData, HoloStyle } from '../types/card';
 import { RARITY_CONFIGS, ELEMENT_CONFIGS } from '../data/configs';
 import { playCardFlipSound, playCardHoverSound, playSparkleSound } from '../utils/soundEffects';
+import { resolveImageUrl } from '../utils/imageHelper';
 import { RotateCw, Download } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
@@ -212,7 +213,7 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
             {isFullArtMode && (
               <div className="absolute inset-0 z-0 overflow-hidden flex items-center justify-center bg-slate-950">
                 <img
-                  src={card.image}
+                  src={resolveImageUrl(card.image)}
                   alt={card.title}
                   className={`w-full h-full ${
                     card.imageFit === 'contain'
@@ -451,7 +452,7 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
                   }}
                 >
                   <img
-                    src={card.image}
+                    src={resolveImageUrl(card.image)}
                     alt={card.title}
                     className={`w-full h-full ${
                       card.imageFit === 'contain' ? 'object-contain' : 'object-cover'
@@ -582,7 +583,7 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
             className="card-face card-back absolute inset-0 rounded-[20px] overflow-hidden border-2 border-amber-500/80 bg-slate-950 shadow-2xl flex items-center justify-center"
           >
             <img
-              src="/cards/Card_Trasera.png"
+              src={resolveImageUrl('/cards/Card_Trasera.png')}
               alt="Reverso de Carta TCG"
               className="w-full h-full object-cover rounded-[18px]"
               loading="lazy"
