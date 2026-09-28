@@ -28,7 +28,10 @@ export function App() {
     const saved = localStorage.getItem('tokkii_builder_cards');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= DEFAULT_CARDS.length) {
+          return parsed;
+        }
       } catch {
         return DEFAULT_CARDS;
       }

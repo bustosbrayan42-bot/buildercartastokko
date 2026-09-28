@@ -40,6 +40,10 @@ export interface CardData {
   totalInSet: string;
   artist: string;
   flavorText: string;
+  abilityName?: string;
+  abilityCost?: string[];
+  abilityDamage?: string;
+  abilityDesc?: string;
   attacks: CardAttack[];
   retreatCost: number;
   weakness?: CardElement;
