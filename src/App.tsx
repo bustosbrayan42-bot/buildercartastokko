@@ -31,6 +31,9 @@ export function App() {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length >= DEFAULT_CARDS.length) {
           return parsed;
+        } else if (Array.isArray(parsed) && parsed.length > 0) {
+          const localMap = new Map(parsed.map((c: CardData) => [c.id, c]));
+          return DEFAULT_CARDS.map((defCard) => localMap.get(defCard.id) || defCard);
         }
       } catch {
         return DEFAULT_CARDS;
@@ -47,7 +50,14 @@ export function App() {
       try {
         const supabaseCards = await fetchCardsFromSupabase();
         if (supabaseCards && supabaseCards.length > 0) {
-          setCards(supabaseCards);
+          if (supabaseCards.length >= DEFAULT_CARDS.length) {
+            setCards(supabaseCards);
+          } else {
+            // Merge custom edits from Supabase while preserving all 140 cards
+            const dbMap = new Map(supabaseCards.map((c: CardData) => [c.id, c]));
+            const merged = DEFAULT_CARDS.map((defCard) => dbMap.get(defCard.id) || defCard);
+            setCards(merged);
+          }
         }
       } catch (err) {
         console.warn('Could not fetch initial cards from Supabase, using local:', err);
