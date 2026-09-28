@@ -1036,7 +1036,7 @@ for (let num = 1; num <= 140; num++) {
 
   cardsData.push({
     id: `tokkii-${numStr}`,
-    title: `Tokkii - ${c.title}`,
+    title: c.title,
     subtitle: `${c.clase} • Edición Génesis`,
     image: '/cards/tokkii_photographer.jpg',
     imageZoom: 1,
