@@ -477,7 +477,9 @@ export function App() {
             <div className="w-full lg:w-1/2">
               <PackEditorPanel
                 config={packConfig}
+                cards={cards}
                 onChange={setPackConfig}
+                onOpenVisualTest={() => setIsPackSimulatorOpen(true)}
               />
             </div>
           </div>

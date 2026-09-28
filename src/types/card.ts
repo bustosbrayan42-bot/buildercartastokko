@@ -54,6 +54,13 @@ export interface CardData {
   tags: string[];
 }
 
+export interface PackSizeRule {
+  enabledRarities: Rarity[];
+  dropRates: Record<Rarity, number>;
+  guaranteedSlotMinRarity?: Rarity | 'none';
+  guaranteedSlotRates?: Record<Rarity, number>;
+}
+
 export interface BoosterPackConfig {
   packTitle: string;
   packSubtitle: string;
@@ -67,6 +74,8 @@ export interface BoosterPackConfig {
   crimpColor: string;
   soundEnabled: boolean;
   dropRates: Record<Rarity, number>;
+  packSizeRules?: Record<number, PackSizeRule>;
+  cardWeights?: Record<string, number>;
 }
 
 export interface RarityConfig {

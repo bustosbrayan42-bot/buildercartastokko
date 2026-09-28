@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import type { CardData, BoosterPackConfig, Rarity } from '../types/card';
+import type { CardData, BoosterPackConfig } from '../types/card';
 import { CardCanvas } from './CardCanvas';
 import { RARITY_CONFIGS } from '../data/configs';
 import { playPackTearSound, playLegendaryRevealSound, playSparkleSound, playCardFlipSound } from '../utils/soundEffects';
 import { resolveImageUrl } from '../utils/imageHelper';
+import { drawCardFromPack } from '../utils/probabilityEngine';
 import confetti from 'canvas-confetti';
 import { Sparkles, Package, RotateCcw, X, Scissors, ChevronRight } from 'lucide-react';
 
@@ -23,65 +24,22 @@ export const PackOpenerModal: React.FC<PackOpenerModalProps> = ({
   if (!isOpen) return null;
 
   // Selected card count: 1, 3 or 5
-  const [packCardCount, setPackCardCount] = useState<number>(config.cardsPerPack || 3);
+  const [packCardCount, setPackCardCount] = useState<number>(config.cardsPerPack || 1);
 
   // Animation states: 'unopened' | 'tearing' | 'sliding' | 'revealing'
   const [animState, setAnimState] = useState<'unopened' | 'tearing' | 'sliding' | 'revealing'>('unopened');
   const [pulledCards, setPulledCards] = useState<CardData[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState<number>(0);
 
-  // Helper to pull random card based on rarity drop rates
-  const getRandomCardByRarity = (isGuaranteedHit = false): CardData => {
-    const rarities: Rarity[] = [
-      'common',
-      'uncommon',
-      'rare',
-      'super_rare',
-      'ultra_rare',
-      'secret_rare',
-    ];
-
-    // If guaranteed hit for the last card of pack, boost higher rarities
-    const currentRates = isGuaranteedHit
-      ? {
-          common: 10,
-          uncommon: 30,
-          rare: 35,
-          super_rare: 15,
-          ultra_rare: 7,
-          secret_rare: 3,
-        }
-      : config.dropRates;
-
-    const totalWeight = rarities.reduce((sum, r) => sum + (currentRates[r] || 0), 0) || 100;
-    let randomVal = Math.random() * totalWeight;
-
-    let selectedRarity: Rarity = 'common';
-    for (const r of rarities) {
-      const weight = currentRates[r] || 0;
-      if (randomVal <= weight) {
-        selectedRarity = r;
-        break;
-      }
-      randomVal -= weight;
-    }
-
-    const matchingCards = cards.filter((c) => c.rarity === selectedRarity);
-    return matchingCards.length > 0
-      ? matchingCards[Math.floor(Math.random() * matchingCards.length)]
-      : cards[Math.floor(Math.random() * cards.length)];
-  };
-
   const handleOpenPack = () => {
     if (animState !== 'unopened') return;
 
     if (config.soundEnabled) playPackTearSound();
 
-    // Pull N cards (1, 3 or 5)
+    // Pull N cards (1, 3 or 5) using the probability engine
     const newPulled: CardData[] = [];
-    for (let i = 0; i < packCardCount; i++) {
-      const isLast = i === packCardCount - 1;
-      newPulled.push(getRandomCardByRarity(isLast && packCardCount > 1));
+    for (let slot = 0; slot < packCardCount; slot++) {
+      newPulled.push(drawCardFromPack(cards, packCardCount, slot, config));
     }
 
     setPulledCards(newPulled);
