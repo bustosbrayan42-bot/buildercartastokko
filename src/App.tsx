@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import {
   fetchCardsFromSupabase,
+  saveCardToSupabase,
   syncAllCardsToSupabase
 } from './utils/supabaseClient';
 import { saveCardsToIndexedDb, loadCardsFromIndexedDb } from './utils/cardStorage';
@@ -151,6 +152,11 @@ export function App() {
       const next = prev.map((c) => (c.id === updated.id ? updated : c));
       saveCardsToIndexedDb(next);
       return next;
+    });
+
+    // Auto-sync updated card with Supabase
+    saveCardToSupabase(updated).catch((err) => {
+      console.warn('Auto-sync to Supabase pending:', err);
     });
   };
 
