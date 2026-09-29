@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { AttackEmojiPicker } from './AttackEmojiPicker';
 import { uploadImageToR2 } from '../utils/r2Storage';
+import { compressImageFile } from '../utils/imageCompressor';
 
 interface CardEditorPanelProps {
   card: CardData;
@@ -75,9 +76,24 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
   const [isUploadingR2, setIsUploadingR2] = useState<boolean>(false);
   const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    try {
+      const compressedDataUrl = await compressImageFile(file, 1000, 1400, 0.85);
+      onChange({
+        ...card,
+        image: compressedDataUrl,
+      });
+      setUploadStatus({
+        type: 'success',
+        message: '¡Imagen cargada y optimizada en memoria local!',
+      });
+      setTimeout(() => setUploadStatus(null), 4000);
+    } catch (err: any) {
+      console.error('Error compressing image:', err);
+      // Fallback to FileReader
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {

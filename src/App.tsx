@@ -21,6 +21,7 @@ import {
   fetchCardsFromSupabase,
   syncAllCardsToSupabase
 } from './utils/supabaseClient';
+import { saveCardsToIndexedDb, loadCardsFromIndexedDb } from './utils/cardStorage';
 
 export function App() {
   // Load Cards
@@ -44,20 +45,49 @@ export function App() {
 
   const [isSyncingSupabase, setIsSyncingSupabase] = useState(false);
 
-  // Auto load from Supabase on mount if available
+  // Load from IndexedDB on mount (handles high-res images and large storage)
+  useEffect(() => {
+    const loadFromIdb = async () => {
+      try {
+        const idbCards = await loadCardsFromIndexedDb();
+        if (idbCards && idbCards.length > 0) {
+          setCards((prev) => {
+            const idbMap = new Map(idbCards.map((c: CardData) => [c.id, c]));
+            return prev.map((c) => idbMap.get(c.id) || c);
+          });
+        }
+      } catch (err) {
+        console.warn('Could not load from IndexedDB:', err);
+      }
+    };
+    loadFromIdb();
+  }, []);
+
+  // Auto load from Supabase on mount with smart merge (never overwrite custom images with default placeholders)
   useEffect(() => {
     const loadFromSupabase = async () => {
       try {
         const supabaseCards = await fetchCardsFromSupabase();
         if (supabaseCards && supabaseCards.length > 0) {
-          if (supabaseCards.length >= DEFAULT_CARDS.length) {
-            setCards(supabaseCards);
-          } else {
-            // Merge custom edits from Supabase while preserving all 140 cards
-            const dbMap = new Map(supabaseCards.map((c: CardData) => [c.id, c]));
-            const merged = DEFAULT_CARDS.map((defCard) => dbMap.get(defCard.id) || defCard);
-            setCards(merged);
-          }
+          setCards((currentCards) => {
+            const currentMap = new Map(currentCards.map((c) => [c.id, c]));
+            return supabaseCards.map((sbCard) => {
+              const localCard = currentMap.get(sbCard.id);
+              // If local card has a custom uploaded image, keep the local version!
+              if (localCard && localCard.image && !localCard.image.includes('tokkii_photographer.jpg')) {
+                return {
+                  ...sbCard,
+                  image: localCard.image,
+                  imageZoom: localCard.imageZoom ?? sbCard.imageZoom,
+                  imageOffsetX: localCard.imageOffsetX ?? sbCard.imageOffsetX,
+                  imageOffsetY: localCard.imageOffsetY ?? sbCard.imageOffsetY,
+                  imageRotation: localCard.imageRotation ?? sbCard.imageRotation,
+                  imageFit: localCard.imageFit ?? sbCard.imageFit,
+                };
+              }
+              return localCard ? { ...sbCard, ...localCard } : sbCard;
+            });
+          });
         }
       } catch (err) {
         console.warn('Could not fetch initial cards from Supabase, using local:', err);
@@ -79,13 +109,22 @@ export function App() {
     return DEFAULT_PACK_CONFIG;
   });
 
-  // Save to localStorage
+  // Save to IndexedDB (unlimited) and localStorage
   useEffect(() => {
-    localStorage.setItem('tokkii_builder_cards', JSON.stringify(cards));
+    saveCardsToIndexedDb(cards);
+    try {
+      localStorage.setItem('tokkii_builder_cards', JSON.stringify(cards));
+    } catch {
+      // localStorage quota exceeded (safe fallback to IndexedDB)
+    }
   }, [cards]);
 
   useEffect(() => {
-    localStorage.setItem('tokkii_builder_pack', JSON.stringify(packConfig));
+    try {
+      localStorage.setItem('tokkii_builder_pack', JSON.stringify(packConfig));
+    } catch {
+      // ignore
+    }
   }, [packConfig]);
 
   // Active view: card_builder vs pack_builder
@@ -108,7 +147,11 @@ export function App() {
 
   // Card update handler
   const handleCardChange = (updated: CardData) => {
-    setCards((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setCards((prev) => {
+      const next = prev.map((c) => (c.id === updated.id ? updated : c));
+      saveCardsToIndexedDb(next);
+      return next;
+    });
   };
 
   // Add New Card
