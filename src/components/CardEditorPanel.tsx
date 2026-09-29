@@ -22,7 +22,8 @@ import {
   Cloud,
   Loader2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  CloudUpload
 } from 'lucide-react';
 import { AttackEmojiPicker } from './AttackEmojiPicker';
 import { uploadImageToR2 } from '../utils/r2Storage';
@@ -31,11 +32,13 @@ import { compressImageFile } from '../utils/imageCompressor';
 interface CardEditorPanelProps {
   card: CardData;
   onChange: (updated: CardData) => void;
+  onSaveToSupabase?: (card: CardData) => Promise<void>;
 }
 
 export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
   card,
   onChange,
+  onSaveToSupabase,
 }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'art' | 'holo' | 'attacks' | 'stats'>('info');
   const [targetAttackIndex, setTargetAttackIndex] = useState<number>(0);
@@ -74,7 +77,28 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
   ];
 
   const [isUploadingR2, setIsUploadingR2] = useState<boolean>(false);
+  const [isSavingSupabase, setIsSavingSupabase] = useState<boolean>(false);
   const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleSaveSupabase = async () => {
+    if (!onSaveToSupabase) return;
+    try {
+      setIsSavingSupabase(true);
+      await onSaveToSupabase(card);
+      setUploadStatus({
+        type: 'success',
+        message: '¡Carta guardada y sincronizada en Supabase con éxito!',
+      });
+      setTimeout(() => setUploadStatus(null), 4000);
+    } catch (err: any) {
+      setUploadStatus({
+        type: 'error',
+        message: `Error al guardar en Supabase: ${err?.message || 'Error de conexión'}`,
+      });
+    } finally {
+      setIsSavingSupabase(false);
+    }
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -495,13 +519,31 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                     Usar Tokkii Default
                   </button>
                 </div>
-                <input
-                  type="text"
-                  value={card.image}
-                  onChange={(e) => onChange({ ...card, image: e.target.value })}
-                  placeholder="https://pub-0bf9a87cec964ff49bfd058873c948c3.r2.dev/cards/..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 font-mono"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={card.image}
+                    onChange={(e) => onChange({ ...card, image: e.target.value })}
+                    placeholder="https://pub-0bf9a87cec964ff49bfd058873c948c3.r2.dev/cards/..."
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 font-mono"
+                  />
+                  {onSaveToSupabase && (
+                    <button
+                      type="button"
+                      onClick={handleSaveSupabase}
+                      disabled={isSavingSupabase}
+                      className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
+                      title="Forzar guardado inmediato en Supabase"
+                    >
+                      {isSavingSupabase ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <CloudUpload className="w-3.5 h-3.5" />
+                      )}
+                      <span>Guardar</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

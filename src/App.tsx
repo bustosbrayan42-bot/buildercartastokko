@@ -20,7 +20,9 @@ import {
 import {
   fetchCardsFromSupabase,
   saveCardToSupabase,
-  syncAllCardsToSupabase
+  syncAllCardsToSupabase,
+  supabase,
+  rowToCard
 } from './utils/supabaseClient';
 import { saveCardsToIndexedDb, loadCardsFromIndexedDb } from './utils/cardStorage';
 
@@ -52,10 +54,7 @@ export function App() {
       try {
         const idbCards = await loadCardsFromIndexedDb();
         if (idbCards && idbCards.length > 0) {
-          setCards((prev) => {
-            const idbMap = new Map(idbCards.map((c: CardData) => [c.id, c]));
-            return prev.map((c) => idbMap.get(c.id) || c);
-          });
+          setCards(idbCards);
         }
       } catch (err) {
         console.warn('Could not load from IndexedDB:', err);
@@ -64,7 +63,7 @@ export function App() {
     loadFromIdb();
   }, []);
 
-  // Auto load from Supabase on mount with smart merge (never overwrite custom images with default placeholders)
+  // Auto load from Supabase on mount & Realtime sync
   useEffect(() => {
     const loadFromSupabase = async () => {
       try {
@@ -72,22 +71,25 @@ export function App() {
         if (supabaseCards && supabaseCards.length > 0) {
           setCards((currentCards) => {
             const currentMap = new Map(currentCards.map((c) => [c.id, c]));
-            return supabaseCards.map((sbCard) => {
+            // Merge Supabase cards with any unsynced local drafts
+            const merged = supabaseCards.map((sbCard) => {
               const localCard = currentMap.get(sbCard.id);
-              // If local card has a custom uploaded image, keep the local version!
-              if (localCard && localCard.image && !localCard.image.includes('tokkii_photographer.jpg')) {
+              // If local card has an unsynced base64 image and Supabase has default, retain base64 draft
+              if (localCard?.image?.startsWith('data:') && (!sbCard.image || sbCard.image.includes('tokkii_photographer.jpg'))) {
                 return {
                   ...sbCard,
                   image: localCard.image,
-                  imageZoom: localCard.imageZoom ?? sbCard.imageZoom,
-                  imageOffsetX: localCard.imageOffsetX ?? sbCard.imageOffsetX,
-                  imageOffsetY: localCard.imageOffsetY ?? sbCard.imageOffsetY,
-                  imageRotation: localCard.imageRotation ?? sbCard.imageRotation,
-                  imageFit: localCard.imageFit ?? sbCard.imageFit,
                 };
               }
-              return localCard ? { ...sbCard, ...localCard } : sbCard;
+              return sbCard;
             });
+
+            // Keep locally created cards not yet in Supabase
+            const sbIdSet = new Set(supabaseCards.map((c) => c.id));
+            const localOnlyCards = currentCards.filter((c) => !sbIdSet.has(c.id));
+            const fullList = [...merged, ...localOnlyCards];
+            saveCardsToIndexedDb(fullList);
+            return fullList;
           });
         }
       } catch (err) {
@@ -95,6 +97,42 @@ export function App() {
       }
     };
     loadFromSupabase();
+
+    const channel = supabase
+      .channel('builder_cards_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cards' },
+        (payload) => {
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const updatedCard = rowToCard(payload.new as any);
+            setCards((prev) => {
+              const existingIdx = prev.findIndex((c) => c.id === updatedCard.id);
+              let next: CardData[];
+              if (existingIdx >= 0) {
+                // If local has active unsynced base64 and update doesn't override with a custom URL, keep base64
+                next = [...prev];
+                next[existingIdx] = updatedCard;
+              } else {
+                next = [...prev, updatedCard];
+              }
+              saveCardsToIndexedDb(next);
+              return next;
+            });
+          } else if (payload.eventType === 'DELETE') {
+            setCards((prev) => {
+              const next = prev.filter((c) => c.id !== payload.old.id);
+              saveCardsToIndexedDb(next);
+              return next;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Load Pack Config
@@ -515,6 +553,7 @@ export function App() {
                       <CardEditorPanel
                         card={currentCard}
                         onChange={handleCardChange}
+                        onSaveToSupabase={saveCardToSupabase}
                       />
                     )}
                   </div>
