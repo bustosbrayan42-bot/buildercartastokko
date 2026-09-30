@@ -6,7 +6,9 @@ import {
   RotateCcw,
   ExternalLink,
   Gift,
-  Send
+  Send,
+  ShieldCheck,
+  LogOut
 } from 'lucide-react';
 
 export type BuilderViewMode = 'card_builder' | 'pack_builder' | 'pack_management' | 'gift_cards';
@@ -16,6 +18,8 @@ interface HeaderProps {
   onViewChange: (view: BuilderViewMode) => void;
   onResetDefaults: () => void;
   cardCount: number;
+  adminEmail?: string;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,6 +27,8 @@ export const Header: React.FC<HeaderProps> = ({
   onViewChange,
   onResetDefaults,
   cardCount,
+  adminEmail,
+  onLogout,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80 shadow-lg">
@@ -101,24 +107,42 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </nav>
 
-        {/* Action Controls */}
+        {/* Action Controls & Admin Profile */}
         <div className="flex items-center gap-2">
+          {adminEmail && (
+            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="text-[11px] font-mono text-slate-300 truncate max-w-[130px] hidden md:inline">
+                {adminEmail}
+              </span>
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  title="Cerrar sesión de administrador"
+                  className="p-1 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+
           <button
             onClick={onResetDefaults}
             title="Restablecer cartas originales"
-            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition-colors"
+            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
 
           <a
-            href="http://localhost:5173"
+            href="https://bustosbrayan42-bot.github.io/cartastokko/"
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">Abrir Visor Web</span>
+            <span className="hidden sm:inline">Visor Web</span>
           </a>
         </div>
       </div>

@@ -10,6 +10,12 @@ import { PackEditorPanel } from './components/PackEditorPanel';
 import { PackOpenerModal } from './components/PackOpenerModal';
 import { PackManagementView } from './components/PackManagementView';
 import { GiftCardsView } from './components/GiftCardsView';
+import { AdminLoginGate } from './components/AdminLoginGate';
+import {
+  getCurrentAdmin,
+  signOutAdmin,
+  type AdminUser
+} from './services/adminAuthService';
 import {
   Sparkles,
   Check,
@@ -29,6 +35,31 @@ import {
 import { saveCardsToIndexedDb, loadCardsFromIndexedDb } from './utils/cardStorage';
 
 export function App() {
+  // Admin Authentication State
+  const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const admin = await getCurrentAdmin();
+        if (admin) {
+          setCurrentAdmin(admin);
+        }
+      } catch (err) {
+        console.warn('Could not verify admin session:', err);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  const handleAdminLogout = async () => {
+    await signOutAdmin();
+    setCurrentAdmin(null);
+  };
+
   // Load Cards
   const [cards, setCards] = useState<CardData[]>(() => {
     const saved = localStorage.getItem('tokkii_builder_cards');
@@ -415,6 +446,21 @@ export function App() {
     }
   };
 
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-slate-400">
+        <div className="w-10 h-10 rounded-2xl border-2 border-amber-400/20 border-t-amber-400 animate-spin mb-4" />
+        <p className="text-xs font-mono uppercase tracking-widest text-slate-500">
+          Verificando sesión de administrador...
+        </p>
+      </div>
+    );
+  }
+
+  if (!currentAdmin) {
+    return <AdminLoginGate onLoginSuccess={(admin) => setCurrentAdmin(admin)} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#07090e] text-slate-100 flex flex-col selection:bg-amber-500 selection:text-slate-950">
       {/* Top Navbar */}
@@ -428,6 +474,8 @@ export function App() {
         }}
         onResetDefaults={handleResetDefaults}
         cardCount={cards.length}
+        adminEmail={currentAdmin.email}
+        onLogout={handleAdminLogout}
       />
 
       {/* Main Studio Area */}
