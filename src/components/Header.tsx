@@ -4,12 +4,16 @@ import {
   Layers,
   Package,
   RotateCcw,
-  ExternalLink
+  ExternalLink,
+  Gift,
+  Send
 } from 'lucide-react';
 
+export type BuilderViewMode = 'card_builder' | 'pack_builder' | 'pack_management' | 'gift_cards';
+
 interface HeaderProps {
-  currentView: 'card_builder' | 'pack_builder';
-  onViewChange: (view: 'card_builder' | 'pack_builder') => void;
+  currentView: BuilderViewMode;
+  onViewChange: (view: BuilderViewMode) => void;
   onResetDefaults: () => void;
   cardCount: number;
 }
@@ -22,10 +26,10 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-[1750px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-purple-600 to-cyan-400 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.4)]">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-purple-600 to-pink-500 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.4)]">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -44,10 +48,10 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* View Switch Tabs */}
-        <nav className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-2xl border border-slate-800">
+        <nav className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar">
           <button
             onClick={() => onViewChange('card_builder')}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
               currentView === 'card_builder'
                 ? 'bg-slate-800 text-amber-400 shadow border border-slate-700'
                 : 'text-slate-400 hover:text-white'
@@ -62,14 +66,38 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => onViewChange('pack_builder')}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
               currentView === 'pack_builder'
                 ? 'bg-slate-800 text-amber-400 shadow border border-slate-700'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Package className="w-4 h-4" />
-            <span>Editor de Sobres Booster</span>
+            <span>Diseño de Sobres</span>
+          </button>
+
+          <button
+            onClick={() => onViewChange('pack_management')}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              currentView === 'pack_management'
+                ? 'bg-gradient-to-r from-purple-700 to-pink-700 text-white shadow border border-pink-500/50'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Send className="w-4 h-4 text-pink-400" />
+            <span>Gestión de Sobres</span>
+          </button>
+
+          <button
+            onClick={() => onViewChange('gift_cards')}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              currentView === 'gift_cards'
+                ? 'bg-gradient-to-r from-amber-600 to-pink-600 text-white shadow border border-amber-500/50'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Gift className="w-4 h-4 text-amber-400" />
+            <span>Regalar Cartas</span>
           </button>
         </nav>
 

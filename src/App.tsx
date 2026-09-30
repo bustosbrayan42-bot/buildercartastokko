@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import type { CardData, BoosterPackConfig } from './types/card';
 import { DEFAULT_CARDS, DEFAULT_PACK_CONFIG } from './data/defaultData';
-import { Header } from './components/Header';
+import { Header, type BuilderViewMode } from './components/Header';
 import { CardCollectionView } from './components/CardCollectionView';
 import { CardCanvas } from './components/CardCanvas';
 import { CardEditorPanel } from './components/CardEditorPanel';
 import { PackCanvas } from './components/PackCanvas';
 import { PackEditorPanel } from './components/PackEditorPanel';
 import { PackOpenerModal } from './components/PackOpenerModal';
+import { PackManagementView } from './components/PackManagementView';
+import { GiftCardsView } from './components/GiftCardsView';
 import {
   Sparkles,
   Check,
@@ -166,8 +168,8 @@ export function App() {
     }
   }, [packConfig]);
 
-  // Active view: card_builder vs pack_builder
-  const [currentView, setCurrentView] = useState<'card_builder' | 'pack_builder'>('card_builder');
+  // Active view: card_builder vs pack_builder vs pack_management vs gift_cards
+  const [currentView, setCurrentView] = useState<BuilderViewMode>('card_builder');
   
   // Card studio mode: 'collection' (4-column grid) vs 'editor' (3D viewer + adjustment panel)
   const [cardStudioMode, setCardStudioMode] = useState<'collection' | 'editor'>('collection');
@@ -584,6 +586,16 @@ export function App() {
               />
             </div>
           </div>
+        )}
+
+        {/* VIEW 3: PACKS MANAGEMENT (Enviar Sobres a Usuarios de Twitch) */}
+        {currentView === 'pack_management' && (
+          <PackManagementView onShowToast={showToast} />
+        )}
+
+        {/* VIEW 4: GIFT CARDS (Regalar Cartas Individuales con Visor 5 columnas) */}
+        {currentView === 'gift_cards' && (
+          <GiftCardsView cards={cards} onShowToast={showToast} />
         )}
       </main>
 
