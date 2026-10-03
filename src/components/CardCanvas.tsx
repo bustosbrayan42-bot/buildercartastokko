@@ -3,8 +3,9 @@ import type { CardData, HoloStyle } from '../types/card';
 import { RARITY_CONFIGS, ELEMENT_CONFIGS } from '../data/configs';
 import { playCardFlipSound, playCardHoverSound, playSparkleSound } from '../utils/soundEffects';
 import { resolveImageUrl } from '../utils/imageHelper';
-import { RotateCw, Download } from 'lucide-react';
+import { RotateCw, Download, CloudUpload, Loader2, CheckCircle2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { uploadRenderedCardToR2 } from '../utils/r2Storage';
 
 interface CardCanvasProps {
   card: CardData;
@@ -13,6 +14,9 @@ interface CardCanvasProps {
   showControls?: boolean;
   className?: string;
   onExportSuccess?: () => void;
+  onSaveCard?: (card: CardData, renderedUrl: string) => Promise<void> | void;
+  onSaveSuccess?: (url: string) => void;
+  onSaveError?: (msg: string) => void;
 }
 
 export const CardCanvas: React.FC<CardCanvasProps> = ({
@@ -22,12 +26,17 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
   showControls = true,
   className = '',
   onExportSuccess,
+  onSaveCard,
+  onSaveSuccess,
+  onSaveError,
 }) => {
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccessNotice, setSaveSuccessNotice] = useState(false);
 
   const [transformStyle, setTransformStyle] = useState({
     rotX: 0,
@@ -139,6 +148,38 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
       console.error('Error exporting card image:', err);
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleSaveCardToR2 = async () => {
+    if (!cardRef.current) return;
+    setIsSaving(true);
+    try {
+      // 1. Capture front face in high resolution
+      const dataUrl = await toPng(cardRef.current, {
+        cacheBust: true,
+        pixelRatio: 2.5,
+        style: {
+          transform: 'none',
+        },
+      });
+
+      // 2. Upload to Cloudflare R2: cartas_renderizadas/carta_XXX.png (overwrites cleanly)
+      const publicUrl = await uploadRenderedCardToR2(card.cardNumber, dataUrl);
+
+      // 3. Save to Supabase and update state
+      if (onSaveCard) {
+        await onSaveCard(card, publicUrl);
+      }
+
+      setSaveSuccessNotice(true);
+      setTimeout(() => setSaveSuccessNotice(false), 4000);
+      onSaveSuccess?.(publicUrl);
+    } catch (err: any) {
+      console.error('Error saving rendered card to R2:', err);
+      onSaveError?.(err?.message || 'Error al guardar la carta en R2');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -596,22 +637,52 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
 
       {/* Floating Canvas Controls positioned comfortably below the card */}
       {showControls && (
-        <div className="mt-8 flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-slate-800 shadow-2xl z-10">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-2 bg-slate-900/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-slate-800 shadow-2xl z-10">
           <button
             onClick={handleFlip}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-amber-400 transition-colors px-3 py-1.5 rounded-xl hover:bg-slate-800"
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-amber-400 transition-colors px-3 py-1.5 rounded-xl hover:bg-slate-800 cursor-pointer"
           >
             <RotateCw className="w-3.5 h-3.5" />
             Girar Carta (3D)
           </button>
-          <div className="h-4 w-px bg-slate-700" />
+
+          <div className="h-4 w-px bg-slate-700 hidden sm:block" />
+
           <button
             onClick={handleExportPng}
-            disabled={isExporting}
-            className="flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors px-3 py-1.5 rounded-xl hover:bg-slate-800 disabled:opacity-50"
+            disabled={isExporting || isSaving}
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-white transition-colors px-3 py-1.5 rounded-xl hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+            title="Descargar imagen PNG local en tu computadora"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 text-slate-400" />
             {isExporting ? 'Exportando...' : 'Descargar PNG'}
+          </button>
+
+          <div className="h-4 w-px bg-slate-700 hidden sm:block" />
+
+          {/* Guardar Carta (Renderiza y sube a R2 + Supabase) */}
+          <button
+            onClick={handleSaveCardToR2}
+            disabled={isSaving || isExporting}
+            className="flex items-center gap-1.5 text-xs font-black text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 transition-all px-4 py-1.5 rounded-xl shadow-md shadow-amber-500/25 active:scale-95 disabled:opacity-50 cursor-pointer"
+            title="Renderizar carta en alta resolución y guardar en Cloudflare R2 y Supabase"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                <span>Guardando en R2...</span>
+              </>
+            ) : saveSuccessNotice ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-950" />
+                <span className="text-emerald-950">¡Guardado en R2!</span>
+              </>
+            ) : (
+              <>
+                <CloudUpload className="w-3.5 h-3.5 text-slate-950" />
+                <span>Guardar Carta</span>
+              </>
+            )}
           </button>
         </div>
       )}

@@ -591,6 +591,16 @@ export function App() {
                         scale={1.18}
                         interactive={true}
                         onExportSuccess={() => showToast('¡Imagen PNG generada y descargada!')}
+                        onSaveCard={async (savedCard) => {
+                          setCards((prev) => {
+                            const next = prev.map((c) => (c.id === savedCard.id ? savedCard : c));
+                            saveCardsToIndexedDb(next);
+                            return next;
+                          });
+                          await saveCardToSupabase(savedCard);
+                        }}
+                        onSaveSuccess={() => showToast(`¡Carta #${currentCard.cardNumber} guardada y subida a R2!`)}
+                        onSaveError={(err) => showToast(`Error al guardar en R2: ${err}`)}
                       />
                     ) : (
                       <div className="text-slate-500">Selecciona una carta para editar</div>

@@ -81,3 +81,34 @@ export const uploadImageToR2 = async (
   const baseDomain = config.publicDomain.replace(/\/+$/, '');
   return `${baseDomain}/${uniqueKey}`;
 };
+
+/**
+ * Uploads a pre-rendered card PNG to Cloudflare R2 with a deterministic filename based on cardNumber.
+ * This ensures updating a card cleanly overwrites the previous rendered image without duplicate files.
+ */
+export const uploadRenderedCardToR2 = async (
+  cardNumber: string,
+  dataUrl: string,
+  config: R2Config = getR2Config()
+): Promise<string> => {
+  const s3 = createR2Client(config);
+  const numStr = String(cardNumber || '001').padStart(3, '0');
+  const uniqueKey = `cartas_renderizadas/carta_${numStr}.png`;
+
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  const arrayBuffer = await blob.arrayBuffer();
+
+  const command = new PutObjectCommand({
+    Bucket: config.bucketName,
+    Key: uniqueKey,
+    Body: new Uint8Array(arrayBuffer),
+    ContentType: 'image/png',
+    CacheControl: 'public, max-age=31536000',
+  });
+
+  await s3.send(command);
+
+  const baseDomain = config.publicDomain.replace(/\/+$/, '');
+  return `${baseDomain}/${uniqueKey}`;
+};
