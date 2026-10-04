@@ -859,7 +859,15 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                     <button
                       key={r}
                       type="button"
-                      onClick={() => onChange({ ...card, rarity: r })}
+                      onClick={() =>
+                        onChange({
+                          ...card,
+                          rarity: r,
+                          customHoloStyle: cfg.defaultHoloStyle,
+                          customFoilOpacity: cfg.defaultFoilOpacity,
+                          customMaskOpacity: cfg.defaultGlareOpacity,
+                        })
+                      }
                       className={`p-2.5 rounded-xl text-xs font-bold text-left border transition-all flex flex-col gap-0.5 ${
                         selected
                           ? 'bg-slate-800 border-2 border-amber-400 text-white shadow-[0_0_12px_rgba(234,179,8,0.35)]'
@@ -901,7 +909,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                 <div className="flex justify-between text-xs text-slate-300 font-bold">
                   <span>Intensidad de Lámina Foil:</span>
                   <span className="text-amber-400 font-mono">
-                    {Math.round((card.customFoilOpacity !== undefined ? card.customFoilOpacity : 0.4) * 100)}%
+                    {Math.round((card.customFoilOpacity !== undefined ? card.customFoilOpacity : (RARITY_CONFIGS[card.rarity]?.defaultFoilOpacity ?? 0.4)) * 100)}%
                   </span>
                 </div>
                 <input
@@ -909,7 +917,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                   min="0"
                   max="1"
                   step="0.05"
-                  value={card.customFoilOpacity !== undefined ? card.customFoilOpacity : 0.4}
+                  value={card.customFoilOpacity !== undefined ? card.customFoilOpacity : (RARITY_CONFIGS[card.rarity]?.defaultFoilOpacity ?? 0.4)}
                   onChange={(e) => onChange({ ...card, customFoilOpacity: parseFloat(e.target.value) })}
                   className="w-full accent-amber-500 cursor-pointer"
                 />
@@ -919,7 +927,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                 <div className="flex justify-between text-xs text-slate-300 font-bold">
                   <span>Brillo Especular (Glare Reflection):</span>
                   <span className="text-amber-400 font-mono">
-                    {Math.round((card.customGlareOpacity !== undefined ? card.customGlareOpacity : 0.28) * 100)}%
+                    {Math.round((card.customMaskOpacity !== undefined ? card.customMaskOpacity : (card.customGlareOpacity !== undefined ? card.customGlareOpacity : (RARITY_CONFIGS[card.rarity]?.defaultGlareOpacity ?? 0.28))) * 100)}%
                   </span>
                 </div>
                 <input
@@ -927,8 +935,11 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                   min="0"
                   max="0.8"
                   step="0.02"
-                  value={card.customGlareOpacity !== undefined ? card.customGlareOpacity : 0.28}
-                  onChange={(e) => onChange({ ...card, customGlareOpacity: parseFloat(e.target.value) })}
+                  value={card.customMaskOpacity !== undefined ? card.customMaskOpacity : (card.customGlareOpacity !== undefined ? card.customGlareOpacity : (RARITY_CONFIGS[card.rarity]?.defaultGlareOpacity ?? 0.28))}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    onChange({ ...card, customGlareOpacity: val, customMaskOpacity: val });
+                  }}
                   className="w-full accent-amber-500 cursor-pointer"
                 />
               </div>

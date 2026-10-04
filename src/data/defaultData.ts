@@ -1922,7 +1922,7 @@ export const DEFAULT_CARDS: CardData[] = [
       }
     ],
     "retreatCost": 1,
-    "isFullArt": false,
+    "isFullArt": true,
     "dateAdded": "2026-09-28",
     "tags": [
       "Tokkii",
@@ -1931,7 +1931,11 @@ export const DEFAULT_CARDS: CardData[] = [
       "Común"
     ],
     "weakness": "aura",
-    "resistance": "estilo"
+    "resistance": "estilo",
+    "customHoloStyle": "prismatic",
+    "customFoilOpacity": 0.9,
+    "customMaskOpacity": 0.2,
+    "customGlareOpacity": 0.2
   },
   {
     "id": "tokkii-043",
@@ -2474,7 +2478,7 @@ export const DEFAULT_CARDS: CardData[] = [
       }
     ],
     "retreatCost": 1,
-    "isFullArt": false,
+    "isFullArt": true,
     "dateAdded": "2026-09-28",
     "tags": [
       "Tokkii",
@@ -2483,7 +2487,11 @@ export const DEFAULT_CARDS: CardData[] = [
       "Común"
     ],
     "weakness": "ingenio",
-    "resistance": "arte"
+    "resistance": "arte",
+    "customHoloStyle": "prismatic",
+    "customFoilOpacity": 0.9,
+    "customMaskOpacity": 0.2,
+    "customGlareOpacity": 0.2
   },
   {
     "id": "tokkii-055",
@@ -2842,7 +2850,7 @@ export const DEFAULT_CARDS: CardData[] = [
       }
     ],
     "retreatCost": 1,
-    "isFullArt": false,
+    "isFullArt": true,
     "dateAdded": "2026-09-28",
     "tags": [
       "Tokkii",
@@ -2851,7 +2859,11 @@ export const DEFAULT_CARDS: CardData[] = [
       "Común"
     ],
     "weakness": "arte",
-    "resistance": "estilo"
+    "resistance": "estilo",
+    "customHoloStyle": "prismatic",
+    "customFoilOpacity": 0.9,
+    "customMaskOpacity": 0.2,
+    "customGlareOpacity": 0.2
   },
   {
     "id": "tokkii-063",
@@ -3302,7 +3314,7 @@ export const DEFAULT_CARDS: CardData[] = [
       }
     ],
     "retreatCost": 1,
-    "isFullArt": false,
+    "isFullArt": true,
     "dateAdded": "2026-09-28",
     "tags": [
       "Tokkii",
@@ -3311,7 +3323,11 @@ export const DEFAULT_CARDS: CardData[] = [
       "Común"
     ],
     "weakness": "aura",
-    "resistance": "estilo"
+    "resistance": "estilo",
+    "customHoloStyle": "prismatic",
+    "customFoilOpacity": 0.9,
+    "customMaskOpacity": 0.2,
+    "customGlareOpacity": 0.2
   },
   {
     "id": "tokkii-073",
@@ -3808,7 +3824,7 @@ export const DEFAULT_CARDS: CardData[] = [
       }
     ],
     "retreatCost": 1,
-    "isFullArt": false,
+    "isFullArt": true,
     "dateAdded": "2026-09-28",
     "tags": [
       "Tokkii",
@@ -3817,7 +3833,11 @@ export const DEFAULT_CARDS: CardData[] = [
       "Común"
     ],
     "weakness": "estilo",
-    "resistance": "ingenio"
+    "resistance": "ingenio",
+    "customHoloStyle": "prismatic",
+    "customFoilOpacity": 0.9,
+    "customMaskOpacity": 0.2,
+    "customGlareOpacity": 0.2
   },
   {
     "id": "tokkii-084",
@@ -4314,7 +4334,7 @@ export const DEFAULT_CARDS: CardData[] = [
       }
     ],
     "retreatCost": 1,
-    "isFullArt": false,
+    "isFullArt": true,
     "dateAdded": "2026-09-28",
     "tags": [
       "Tokkii",
@@ -4323,7 +4343,11 @@ export const DEFAULT_CARDS: CardData[] = [
       "Común"
     ],
     "weakness": "desafio",
-    "resistance": "arte"
+    "resistance": "arte",
+    "customHoloStyle": "prismatic",
+    "customFoilOpacity": 0.9,
+    "customMaskOpacity": 0.2,
+    "customGlareOpacity": 0.2
   },
   {
     "id": "tokkii-095",
@@ -5372,7 +5396,7 @@ export const DEFAULT_CARDS: CardData[] = [
       }
     ],
     "retreatCost": 1,
-    "isFullArt": false,
+    "isFullArt": true,
     "dateAdded": "2026-09-28",
     "tags": [
       "Tokkii",
@@ -5381,7 +5405,11 @@ export const DEFAULT_CARDS: CardData[] = [
       "Común"
     ],
     "weakness": "rutina",
-    "resistance": "ingenio"
+    "resistance": "ingenio",
+    "customHoloStyle": "prismatic",
+    "customFoilOpacity": 0.9,
+    "customMaskOpacity": 0.2,
+    "customGlareOpacity": 0.2
   },
   {
     "id": "tokkii-118",

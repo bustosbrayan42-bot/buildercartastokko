@@ -53,8 +53,16 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
   const isFullArtMode = card.rarity === 'secret_rare' || card.isFullArt;
 
   const effectiveHoloStyle: HoloStyle = card.customHoloStyle || rarityConfig.defaultHoloStyle;
-  const effectiveFoilOpacity = card.customFoilOpacity !== undefined ? card.customFoilOpacity : 0.4;
-  const effectiveGlareOpacity = card.customGlareOpacity !== undefined ? card.customGlareOpacity : 0.28;
+  const effectiveFoilOpacity =
+    card.customFoilOpacity !== undefined
+      ? card.customFoilOpacity
+      : (rarityConfig.defaultFoilOpacity ?? 0.4);
+  const effectiveGlareOpacity =
+    card.customMaskOpacity !== undefined
+      ? card.customMaskOpacity
+      : (card.customGlareOpacity !== undefined
+      ? card.customGlareOpacity
+      : (rarityConfig.defaultGlareOpacity ?? 0.28));
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

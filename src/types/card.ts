@@ -92,6 +92,8 @@ export interface RarityConfig {
   borderColor: string;
   badgeBg: string;
   defaultHoloStyle: HoloStyle;
+  defaultFoilOpacity?: number;
+  defaultGlareOpacity?: number;
   stars: number;
   description: string;
 }
