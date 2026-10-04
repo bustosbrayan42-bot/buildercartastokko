@@ -62,7 +62,7 @@ export function App() {
   };
 
   // Load Cards with Version Check
-  const CARDS_DATA_VERSION = 'tokkii_cards_v3_emojis_001_118';
+  const CARDS_DATA_VERSION = 'tokkii_cards_v4_rarity_dist_30_30_35';
 
   const [cards, setCards] = useState<CardData[]>(() => {
     try {
