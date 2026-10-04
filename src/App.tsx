@@ -11,6 +11,7 @@ import { PackOpenerModal } from './components/PackOpenerModal';
 import { PackManagementView } from './components/PackManagementView';
 import { GiftCardsView } from './components/GiftCardsView';
 import { AdminLoginGate } from './components/AdminLoginGate';
+import { BatchImageExportModal } from './components/BatchImageExportModal';
 import {
   getCurrentAdmin,
   signOutAdmin,
@@ -243,6 +244,7 @@ export function App() {
   const [cardStudioMode, setCardStudioMode] = useState<'collection' | 'editor'>('collection');
   const [selectedCardId, setSelectedCardId] = useState<string>(cards[0]?.id || 'tokkii-001');
   const [isPackSimulatorOpen, setIsPackSimulatorOpen] = useState(false);
+  const [isBatchImageModalOpen, setIsBatchImageModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -538,6 +540,7 @@ export function App() {
                 onImportJson={handleImportJson}
                 onSyncSupabase={handleSyncSupabase}
                 onExportSql={handleExportSql}
+                onOpenBatchImageExport={() => setIsBatchImageModalOpen(true)}
                 isSyncingSupabase={isSyncingSupabase}
               />
             )}
@@ -700,6 +703,14 @@ export function App() {
         config={packConfig}
         isOpen={isPackSimulatorOpen}
         onClose={() => setIsPackSimulatorOpen(false)}
+      />
+
+      {/* Batch Card Images Exporter Modal */}
+      <BatchImageExportModal
+        isOpen={isBatchImageModalOpen}
+        onClose={() => setIsBatchImageModalOpen(false)}
+        cards={cards}
+        onShowToast={showToast}
       />
 
       {/* Toast Notification */}

@@ -28,6 +28,7 @@ interface CardCollectionViewProps {
   onImportJson: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSyncSupabase?: () => void;
   onExportSql?: () => void;
+  onOpenBatchImageExport?: () => void;
   isSyncingSupabase?: boolean;
 }
 
@@ -41,6 +42,7 @@ export const CardCollectionView: React.FC<CardCollectionViewProps> = ({
   onImportJson,
   onSyncSupabase,
   onExportSql,
+  onOpenBatchImageExport,
   isSyncingSupabase,
 }) => {
   const [search, setSearch] = useState('');
@@ -147,6 +149,19 @@ export const CardCollectionView: React.FC<CardCollectionViewProps> = ({
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>Generar SQL</span>
+              </button>
+            )}
+
+            {/* Batch Export Card Images (PNG / ZIP) */}
+            {onOpenBatchImageExport && (
+              <button
+                type="button"
+                onClick={onOpenBatchImageExport}
+                className="flex items-center gap-1.5 py-2.5 px-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-lg shadow-purple-600/25 transition-all active:scale-95 cursor-pointer"
+                title="Guardar imágenes PNG de las cartas seleccionando rango"
+              >
+                <Download className="w-3.5 h-3.5 text-pink-200" />
+                <span>Guardar Imágenes</span>
               </button>
             )}
 
