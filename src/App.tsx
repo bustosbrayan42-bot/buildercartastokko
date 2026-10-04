@@ -62,7 +62,7 @@ export function App() {
   };
 
   // Load Cards with Version Check
-  const CARDS_DATA_VERSION = 'tokkii_cards_v4_rarity_dist_30_30_35';
+  const CARDS_DATA_VERSION = 'tokkii_cards_v5_exact_distribution_35_30_30_20_15_10';
 
   const [cards, setCards] = useState<CardData[]>(() => {
     try {
