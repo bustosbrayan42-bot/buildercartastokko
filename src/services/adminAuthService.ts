@@ -83,12 +83,20 @@ export const signInAdminWithPassword = async (
     };
   }
 
+  const adminUser: AdminUser = {
+    id: user.id,
+    email: user.email || cleanEmail,
+  };
+
+  try {
+    localStorage.setItem('tokkii_admin_session', JSON.stringify(adminUser));
+  } catch {
+    // ignore
+  }
+
   return {
     success: true,
-    user: {
-      id: user.id,
-      email: user.email || cleanEmail,
-    },
+    user: adminUser,
   };
 };
 
@@ -126,7 +134,11 @@ export const sendAdminMagicLink = async (
  * Sign out admin
  */
 export const signOutAdmin = async (): Promise<void> => {
-  await supabaseAuth.auth.signOut();
+  try {
+    await supabaseAuth.auth.signOut();
+  } catch {
+    // ignore
+  }
   localStorage.removeItem('tokkii_admin_session');
 };
 
@@ -135,21 +147,48 @@ export const signOutAdmin = async (): Promise<void> => {
  */
 export const getCurrentAdmin = async (): Promise<AdminUser | null> => {
   try {
-    const { data } = await supabaseAuth.auth.getSession();
-    if (!data.session?.user?.email) return null;
-
-    const email = data.session.user.email.toLowerCase();
-    const isAuth = await isEmailAuthorized(email);
-    if (!isAuth) {
-      await signOutAdmin();
-      return null;
+    // 1. Check local storage cache first for instant load on refresh
+    const cached = localStorage.getItem('tokkii_admin_session');
+    let localAdmin: AdminUser | null = null;
+    if (cached) {
+      try {
+        localAdmin = JSON.parse(cached);
+      } catch {
+        localAdmin = null;
+      }
     }
 
-    return {
-      id: data.session.user.id,
-      email: email,
-    };
+    const { data } = await supabaseAuth.auth.getSession();
+    if (data.session?.user?.email) {
+      const email = data.session.user.email.toLowerCase();
+      const isAuth = await isEmailAuthorized(email);
+      if (isAuth) {
+        const admin: AdminUser = {
+          id: data.session.user.id,
+          email: email,
+        };
+        localStorage.setItem('tokkii_admin_session', JSON.stringify(admin));
+        return admin;
+      } else {
+        await signOutAdmin();
+        return null;
+      }
+    }
+
+    if (localAdmin && localAdmin.email) {
+      return localAdmin;
+    }
+
+    return null;
   } catch {
+    const cached = localStorage.getItem('tokkii_admin_session');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        return null;
+      }
+    }
     return null;
   }
 };

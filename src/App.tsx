@@ -60,11 +60,21 @@ export function App() {
     setCurrentAdmin(null);
   };
 
-  // Load Cards
+  // Load Cards with Version Check
+  const CARDS_DATA_VERSION = 'tokkii_cards_v3_emojis_001_118';
+
   const [cards, setCards] = useState<CardData[]>(() => {
-    const saved = localStorage.getItem('tokkii_builder_cards');
-    if (saved) {
-      try {
+    try {
+      const savedVersion = localStorage.getItem('tokkii_cards_data_ver');
+      if (savedVersion !== CARDS_DATA_VERSION) {
+        localStorage.setItem('tokkii_cards_data_ver', CARDS_DATA_VERSION);
+        localStorage.setItem('tokkii_builder_cards', JSON.stringify(DEFAULT_CARDS));
+        saveCardsToIndexedDb(DEFAULT_CARDS);
+        return DEFAULT_CARDS;
+      }
+
+      const saved = localStorage.getItem('tokkii_builder_cards');
+      if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length >= DEFAULT_CARDS.length) {
           return parsed;
@@ -72,9 +82,9 @@ export function App() {
           const localMap = new Map(parsed.map((c: CardData) => [c.id, c]));
           return DEFAULT_CARDS.map((defCard) => localMap.get(defCard.id) || defCard);
         }
-      } catch {
-        return DEFAULT_CARDS;
       }
+    } catch {
+      return DEFAULT_CARDS;
     }
     return DEFAULT_CARDS;
   });
@@ -85,6 +95,13 @@ export function App() {
   useEffect(() => {
     const loadFromIdb = async () => {
       try {
+        const savedVersion = localStorage.getItem('tokkii_cards_data_ver');
+        if (savedVersion !== CARDS_DATA_VERSION) {
+          setCards(DEFAULT_CARDS);
+          saveCardsToIndexedDb(DEFAULT_CARDS);
+          return;
+        }
+
         const idbCards = await loadCardsFromIndexedDb();
         if (idbCards && idbCards.length > 0) {
           setCards(idbCards);
@@ -104,17 +121,37 @@ export function App() {
         if (supabaseCards && supabaseCards.length > 0) {
           setCards((currentCards) => {
             const currentMap = new Map(currentCards.map((c) => [c.id, c]));
-            // Merge Supabase cards with any unsynced local drafts
+            const defMap = new Map(DEFAULT_CARDS.map((c) => [c.id, c]));
+
+            // Merge Supabase cards with any unsynced local drafts and default emojis if empty
             const merged = supabaseCards.map((sbCard) => {
               const localCard = currentMap.get(sbCard.id);
+              const defCard = defMap.get(sbCard.id);
+
+              // Use local or default emojis if Supabase card attacks lack emojis
+              let attacks = sbCard.attacks;
+              if (defCard?.attacks && (!attacks || attacks.length === 0 || !attacks[0]?.name?.includes(' '))) {
+                attacks = defCard.attacks;
+              }
+
               // If local card has an unsynced base64 image and Supabase has default, retain base64 draft
               if (localCard?.image?.startsWith('data:') && (!sbCard.image || sbCard.image.includes('tokkii_photographer.jpg'))) {
                 return {
                   ...sbCard,
+                  attacks: attacks || sbCard.attacks,
+                  weakness: sbCard.weakness || defCard?.weakness,
+                  resistance: sbCard.resistance || defCard?.resistance,
+                  hp: sbCard.hp || defCard?.hp || 100,
                   image: localCard.image,
                 };
               }
-              return sbCard;
+              return {
+                ...sbCard,
+                attacks: attacks || sbCard.attacks,
+                weakness: sbCard.weakness || defCard?.weakness,
+                resistance: sbCard.resistance || defCard?.resistance,
+                hp: sbCard.hp || defCard?.hp || 100,
+              };
             });
 
             // Keep locally created cards not yet in Supabase
