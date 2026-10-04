@@ -61,27 +61,24 @@ export function App() {
     setCurrentAdmin(null);
   };
 
-  // Load Cards with Version Check
-  const CARDS_DATA_VERSION = 'tokkii_cards_secret_rare_batch1';
-
+  // Load Cards
   const [cards, setCards] = useState<CardData[]>(() => {
     try {
-      const savedVersion = localStorage.getItem('tokkii_cards_data_ver');
-      if (savedVersion !== CARDS_DATA_VERSION) {
-        localStorage.setItem('tokkii_cards_data_ver', CARDS_DATA_VERSION);
-        localStorage.setItem('tokkii_builder_cards', JSON.stringify(DEFAULT_CARDS));
-        saveCardsToIndexedDb(DEFAULT_CARDS);
-        return DEFAULT_CARDS;
-      }
-
       const saved = localStorage.getItem('tokkii_builder_cards');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= DEFAULT_CARDS.length) {
-          return parsed;
-        } else if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           const localMap = new Map(parsed.map((c: CardData) => [c.id, c]));
-          return DEFAULT_CARDS.map((defCard) => localMap.get(defCard.id) || defCard);
+          // Merge default cards while preserving any custom images and attributes from local storage
+          return DEFAULT_CARDS.map((defCard) => {
+            const local = localMap.get(defCard.id);
+            if (!local) return defCard;
+            return {
+              ...defCard,
+              ...local,
+              image: local.image && !local.image.includes('tokkii_photographer.jpg') ? local.image : defCard.image,
+            };
+          });
         }
       }
     } catch {
@@ -96,16 +93,20 @@ export function App() {
   useEffect(() => {
     const loadFromIdb = async () => {
       try {
-        const savedVersion = localStorage.getItem('tokkii_cards_data_ver');
-        if (savedVersion !== CARDS_DATA_VERSION) {
-          setCards(DEFAULT_CARDS);
-          saveCardsToIndexedDb(DEFAULT_CARDS);
-          return;
-        }
-
         const idbCards = await loadCardsFromIndexedDb();
         if (idbCards && idbCards.length > 0) {
-          setCards(idbCards);
+          setCards((currentCards) => {
+            const idbMap = new Map(idbCards.map((c) => [c.id, c]));
+            return currentCards.map((card) => {
+              const fromIdb = idbMap.get(card.id);
+              if (!fromIdb) return card;
+              return {
+                ...card,
+                ...fromIdb,
+                image: fromIdb.image && !fromIdb.image.includes('tokkii_photographer.jpg') ? fromIdb.image : card.image,
+              };
+            });
+          });
         }
       } catch (err) {
         console.warn('Could not load from IndexedDB:', err);
@@ -135,23 +136,22 @@ export function App() {
                 attacks = defCard.attacks;
               }
 
-              // If local card has an unsynced base64 image and Supabase has default, retain base64 draft
-              if (localCard?.image?.startsWith('data:') && (!sbCard.image || sbCard.image.includes('tokkii_photographer.jpg'))) {
-                return {
-                  ...sbCard,
-                  attacks: attacks || sbCard.attacks,
-                  weakness: sbCard.weakness || defCard?.weakness,
-                  resistance: sbCard.resistance || defCard?.resistance,
-                  hp: sbCard.hp || defCard?.hp || 100,
-                  image: localCard.image,
-                };
-              }
+              // If local card or default data has a custom image and Supabase has default, retain custom image
+              const localHasCustomImg = localCard?.image && !localCard.image.includes('tokkii_photographer.jpg');
+              const defHasCustomImg = defCard?.image && !defCard.image.includes('tokkii_photographer.jpg');
+              const sbHasDefaultImg = !sbCard.image || sbCard.image.includes('tokkii_photographer.jpg');
+
+              const finalImage = !sbHasDefaultImg 
+                ? sbCard.image 
+                : (localHasCustomImg ? localCard.image : (defHasCustomImg ? defCard.image : sbCard.image));
+
               return {
                 ...sbCard,
                 attacks: attacks || sbCard.attacks,
                 weakness: sbCard.weakness || defCard?.weakness,
                 resistance: sbCard.resistance || defCard?.resistance,
                 hp: sbCard.hp || defCard?.hp || 100,
+                image: finalImage,
               };
             });
 
