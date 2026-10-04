@@ -50,8 +50,10 @@ export const RARITY_CONFIGS: Record<Rarity, RarityConfig> = {
     borderColor: '#ca8a04',
     badgeBg: 'bg-amber-950/80 text-amber-300 border-amber-500',
     defaultHoloStyle: 'gold_stars',
+    defaultFoilOpacity: 0.8,
+    defaultGlareOpacity: 0.28,
     stars: 4,
-    description: 'Relieve dorado brillante con destellos estelares y marco repujado.'
+    description: 'Relieve dorado brillante con destellos estelares (80% foil, 28% glare) y marco repujado.'
   },
   ultra_rare: {
     id: 'ultra_rare',
