@@ -101,8 +101,10 @@ export const BatchImageExportModal: React.FC<BatchImageExportModalProps> = ({
 
         if (!renderContainerRef.current) continue;
 
-        const cardElement = renderContainerRef.current.querySelector('.card-3d-root') as HTMLElement;
-        const targetNode = cardElement || renderContainerRef.current;
+        const cardFrontElement = (renderContainerRef.current.querySelector('.card-face:not(.card-back)') ||
+          renderContainerRef.current.querySelector('.card-face') ||
+          renderContainerRef.current.querySelector('.card-3d-root')) as HTMLElement;
+        const targetNode = cardFrontElement || renderContainerRef.current;
 
         // Render card front face in high resolution (pixelRatio 2.5)
         const dataUrl = await toPng(targetNode, {
@@ -124,21 +126,10 @@ export const BatchImageExportModal: React.FC<BatchImageExportModalProps> = ({
             stageText: `Subiendo a R2 (carta_${paddedNum}.png)...`,
           }));
 
-          const publicUrl = await uploadRenderedCardToR2(card.cardNumber, dataUrl, r2Config);
+          await uploadRenderedCardToR2(card.cardNumber, dataUrl, r2Config);
 
-          // 2. Save/Sync with Supabase
-          const updatedCardWithRender: CardData = {
-            ...card,
-            image: publicUrl,
-          };
-
-          await saveCardToSupabase(updatedCardWithRender);
-
-          // Update local memory list
-          const idx = updatedCardsList.findIndex((c) => c.id === card.id);
-          if (idx >= 0) {
-            updatedCardsList[idx] = updatedCardWithRender;
-          }
+          // 2. Save card state to Supabase preserving original illustration
+          await saveCardToSupabase(card);
         } else if (actionTarget === 'zip' && zip) {
           const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
           zip.file(filename, base64Data, { base64: true });

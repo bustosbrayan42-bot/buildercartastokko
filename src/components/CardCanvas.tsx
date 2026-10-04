@@ -32,6 +32,7 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
 }) => {
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const cardFrontRef = useRef<HTMLDivElement>(null);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -137,10 +138,11 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
   };
 
   const handleExportPng = async () => {
-    if (!cardRef.current) return;
+    const targetNode = cardFrontRef.current || cardRef.current;
+    if (!targetNode) return;
     setIsExporting(true);
     try {
-      const dataUrl = await toPng(cardRef.current, {
+      const dataUrl = await toPng(targetNode, {
         cacheBust: true,
         pixelRatio: 2.5,
         style: {
@@ -160,11 +162,12 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
   };
 
   const handleSaveCardToR2 = async () => {
-    if (!cardRef.current) return;
+    const targetNode = cardFrontRef.current || cardRef.current;
+    if (!targetNode) return;
     setIsSaving(true);
     try {
       // 1. Capture front face in high resolution
-      const dataUrl = await toPng(cardRef.current, {
+      const dataUrl = await toPng(targetNode, {
         cacheBust: true,
         pixelRatio: 2.5,
         style: {
@@ -242,6 +245,7 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
         >
           {/* CARD FRONT */}
           <div
+            ref={cardFrontRef}
             className="card-face absolute inset-0 rounded-[20px] overflow-hidden p-[10px] flex flex-col justify-between border-2"
             style={{
               borderColor: card.borderColor || rarityConfig.borderColor,
