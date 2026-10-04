@@ -62,7 +62,7 @@ export function App() {
   };
 
   // Load Cards with Version Check
-  const CARDS_DATA_VERSION = 'tokkii_cards_reset_all_common_v1';
+  const CARDS_DATA_VERSION = 'tokkii_cards_secret_rare_batch1';
 
   const [cards, setCards] = useState<CardData[]>(() => {
     try {
