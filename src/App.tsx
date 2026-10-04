@@ -710,6 +710,10 @@ export function App() {
         isOpen={isBatchImageModalOpen}
         onClose={() => setIsBatchImageModalOpen(false)}
         cards={cards}
+        onSaveCardSuccess={(updatedList) => {
+          setCards(updatedList);
+          saveCardsToIndexedDb(updatedList);
+        }}
         onShowToast={showToast}
       />
 
