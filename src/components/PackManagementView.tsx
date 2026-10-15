@@ -220,22 +220,22 @@ export const PackManagementView: React.FC<PackManagementViewProps> = ({ onShowTo
             )}
           </div>
 
-          {/* Pack Type Selector (1, 3, 5 cards) */}
+          {/* Pack Type and Quantity Selector (4 columns in one horizontal line) */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-300 block">
-              Tipo de Sobre (Cantidad de cartas):
+              Tipo de Sobre y Cantidad a Enviar:
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {[
-                { type: 'pack_1' as const, label: '1 Carta', desc: 'Sobre Individual' },
-                { type: 'pack_3' as const, label: '3 Cartas', desc: 'Sobre Estándar' },
-                { type: 'pack_5' as const, label: '5 Cartas', desc: 'Sobre Premium' },
+                { type: 'pack_1' as const, label: '1 Carta', desc: 'Individual' },
+                { type: 'pack_3' as const, label: '3 Cartas', desc: 'Estándar' },
+                { type: 'pack_5' as const, label: '5 Cartas', desc: 'Premium' },
               ].map((p) => (
                 <button
                   key={p.type}
                   type="button"
                   onClick={() => setSelectedPackType(p.type)}
-                  className={`py-3 px-2 rounded-2xl text-xs font-bold flex flex-col items-center justify-center transition-all border cursor-pointer ${
+                  className={`py-3 px-1.5 rounded-2xl text-xs font-bold flex flex-col items-center justify-center transition-all border cursor-pointer ${
                     selectedPackType === p.type
                       ? 'bg-gradient-to-b from-purple-600 to-pink-600 text-white border-pink-400 shadow-[0_0_15px_rgba(245,11,140,0.3)] scale-[1.02]'
                       : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
@@ -245,35 +245,23 @@ export const PackManagementView: React.FC<PackManagementViewProps> = ({ onShowTo
                   <span className="text-[9px] font-medium opacity-80">{p.desc}</span>
                 </button>
               ))}
-            </div>
-          </div>
 
-          {/* Quantity Selector */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 block">
-              Cantidad de Sobres a Regalar:
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full bg-slate-950 border border-slate-700 rounded-2xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-amber-400"
-              />
-              <div className="flex gap-1">
-                {[1, 3, 5, 10].map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setQuantity(q)}
-                    className="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold text-slate-300 border border-slate-700 transition-colors"
-                  >
-                    +{q}
-                  </button>
-                ))}
-              </div>
+              {/* Casilla 4: Cantidad de sobres */}
+              <label
+                className="py-3 px-1.5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 focus-within:border-amber-400 focus-within:ring-1 focus-within:ring-amber-400/40 flex flex-col items-center justify-center transition-all cursor-text group"
+              >
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full text-center text-sm font-black font-mono text-white bg-transparent focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span className="text-[9px] font-medium text-slate-400 group-focus-within:text-amber-400 transition-colors">
+                  Cantidad
+                </span>
+              </label>
             </div>
           </div>
 
@@ -338,8 +326,8 @@ export const PackManagementView: React.FC<PackManagementViewProps> = ({ onShowTo
                         : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
                     }`}
                   >
-                    {/* User Info */}
-                    <div className="flex items-center gap-3">
+                    {/* Left: Avatar + Nick/Handle + 4 Stat Badges */}
+                    <div className="flex flex-wrap items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-xl overflow-hidden bg-purple-900 border border-purple-500/40 shrink-0">
                         {u.avatar_url ? (
                           <img
@@ -353,32 +341,52 @@ export const PackManagementView: React.FC<PackManagementViewProps> = ({ onShowTo
                           </span>
                         )}
                       </div>
-                      <div>
-                        <div className="font-bold text-xs text-white">
+
+                      {/* Nick & Handle */}
+                      <div className="min-w-[100px] max-w-[130px] shrink-0">
+                        <div className="font-bold text-xs text-white truncate" title={u.display_name}>
                           {u.display_name}
                         </div>
-                        <div className="text-[10px] text-purple-400 font-mono">
+                        <div className="text-[10px] text-purple-400 font-mono truncate" title={`@${u.username}`}>
                           @{u.username}
                         </div>
-                        <div className="flex items-center gap-1.5 mt-1 text-[9px] font-mono">
-                          <span className="px-1.5 py-0.2 rounded bg-slate-900 text-amber-300 border border-amber-500/30">
-                            1c: {u.packs?.pack_1 || 0}
-                          </span>
-                          <span className="px-1.5 py-0.2 rounded bg-slate-900 text-pink-300 border border-pink-500/30">
-                            3c: {u.packs?.pack_3 || 0}
-                          </span>
-                          <span className="px-1.5 py-0.2 rounded bg-slate-900 text-purple-300 border border-purple-500/30">
-                            5c: {u.packs?.pack_5 || 0}
-                          </span>
-                          <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
-                            Cartas: {u.cardsCount || 0}
-                          </span>
+                      </div>
+
+                      {/* 4 Casillas de Sobres y Cartas (mismo tamaño y estilo que los botones de la derecha) */}
+                      <div className="flex items-center gap-1.5 flex-wrap font-mono">
+                        <div
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-900/90 text-amber-300 border border-amber-500/30 text-[11px] font-black flex items-center gap-1"
+                          title="Sobres de 1 carta"
+                        >
+                          <span className="text-[10px] opacity-75">1c:</span>
+                          <span>{u.packs?.pack_1 || 0}</span>
+                        </div>
+                        <div
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-900/90 text-pink-300 border border-pink-500/30 text-[11px] font-black flex items-center gap-1"
+                          title="Sobres de 3 cartas"
+                        >
+                          <span className="text-[10px] opacity-75">3c:</span>
+                          <span>{u.packs?.pack_3 || 0}</span>
+                        </div>
+                        <div
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-900/90 text-purple-300 border border-purple-500/30 text-[11px] font-black flex items-center gap-1"
+                          title="Sobres de 5 cartas"
+                        >
+                          <span className="text-[10px] opacity-75">5c:</span>
+                          <span>{u.packs?.pack_5 || 0}</span>
+                        </div>
+                        <div
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-900/90 text-slate-300 border border-slate-700/60 text-[11px] font-black flex items-center gap-1"
+                          title="Cartas totales coleccionadas"
+                        >
+                          <span className="text-[10px] opacity-75">Cartas:</span>
+                          <span>{u.cardsCount || 0}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Quick Grant Actions */}
-                    <div className="flex items-center gap-1.5 self-end sm:self-center">
+                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
                       <button
                         type="button"
                         onClick={() => handleSendPacks(u.id, 'pack_1', 1)}
