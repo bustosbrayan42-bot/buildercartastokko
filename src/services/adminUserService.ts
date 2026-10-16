@@ -32,7 +32,7 @@ export const fetchAllUsers = async (): Promise<AdminUserProfile[]> => {
 
   // Also fetch packs and card counts
   const { data: packsData } = await supabaseAuth.from('user_packs').select('*');
-  const { data: cardsData } = await supabaseAuth.from('user_cards').select('user_id, count');
+  const { data: cardsData } = await supabaseAuth.from('user_cards').select('user_id, card_id, count');
 
   const packsMap = new Map<string, { pack_1: number; pack_3: number; pack_5: number }>();
   (packsData || []).forEach((row: { user_id: string; pack_type: string; quantity: number }) => {
@@ -46,8 +46,10 @@ export const fetchAllUsers = async (): Promise<AdminUserProfile[]> => {
   });
 
   const cardsCountMap = new Map<string, number>();
-  (cardsData || []).forEach((row: { user_id: string; count: number }) => {
-    cardsCountMap.set(row.user_id, (cardsCountMap.get(row.user_id) || 0) + (row.count || 1));
+  (cardsData || []).forEach((row: { user_id: string; card_id?: string; count: number }) => {
+    if (!row.card_id || !row.card_id.startsWith('GIFT_CODE:')) {
+      cardsCountMap.set(row.user_id, (cardsCountMap.get(row.user_id) || 0) + (row.count || 1));
+    }
   });
 
   return (profiles || []).map((prof: AdminUserProfile) => ({

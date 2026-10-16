@@ -10,6 +10,7 @@ import { PackEditorPanel } from './components/PackEditorPanel';
 import { PackOpenerModal } from './components/PackOpenerModal';
 import { PackManagementView } from './components/PackManagementView';
 import { GiftCardsView } from './components/GiftCardsView';
+import { GiftCodesView } from './components/GiftCodesView';
 import { AdminLoginGate } from './components/AdminLoginGate';
 import { BatchImageExportModal } from './components/BatchImageExportModal';
 import {
@@ -694,6 +695,11 @@ export function App() {
         {/* VIEW 4: GIFT CARDS (Regalar Cartas Individuales con Visor 5 columnas) */}
         {currentView === 'gift_cards' && (
           <GiftCardsView cards={cards} onShowToast={showToast} />
+        )}
+
+        {/* VIEW 5: GIFT CODES (Generar y Administrar Códigos de Regalo de Sobres) */}
+        {currentView === 'gift_codes' && (
+          <GiftCodesView onShowToast={showToast} />
         )}
       </main>
 

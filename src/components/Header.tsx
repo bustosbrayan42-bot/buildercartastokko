@@ -8,10 +8,11 @@ import {
   Gift,
   Send,
   ShieldCheck,
-  LogOut
+  LogOut,
+  Ticket
 } from 'lucide-react';
 
-export type BuilderViewMode = 'card_builder' | 'pack_builder' | 'pack_management' | 'gift_cards';
+export type BuilderViewMode = 'card_builder' | 'pack_builder' | 'pack_management' | 'gift_cards' | 'gift_codes';
 
 interface HeaderProps {
   currentView: BuilderViewMode;
@@ -104,6 +105,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Gift className="w-4 h-4 text-amber-400" />
             <span>Regalar Cartas</span>
+          </button>
+
+          <button
+            onClick={() => onViewChange('gift_codes')}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              currentView === 'gift_codes'
+                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white shadow border border-emerald-400/50'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Ticket className="w-4 h-4 text-emerald-400" />
+            <span>Generar código de regalo</span>
           </button>
         </nav>
 
