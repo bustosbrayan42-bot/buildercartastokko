@@ -97,10 +97,27 @@ export const rowToCard = (row: DbCardRow): CardData => ({
   dateAdded: row.date_added,
 });
 
+const CARDS_CACHE_KEY = 'tokkii_cached_cards_v1';
+const CARDS_CACHE_TIME_KEY = 'tokkii_cached_cards_v1_time';
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutos de caché local
+
 /**
- * Fetch all cards from Supabase
+ * Fetch all cards from Supabase with smart caching
  */
-export const fetchCardsFromSupabase = async (): Promise<CardData[]> => {
+export const fetchCardsFromSupabase = async (forceRefresh: boolean = false): Promise<CardData[]> => {
+  if (!forceRefresh) {
+    try {
+      const cached = localStorage.getItem(CARDS_CACHE_KEY);
+      const cachedTime = localStorage.getItem(CARDS_CACHE_TIME_KEY);
+      if (cached && cachedTime) {
+        const age = Date.now() - parseInt(cachedTime, 10);
+        if (age < CACHE_TTL_MS) {
+          return JSON.parse(cached);
+        }
+      }
+    } catch {}
+  }
+
   const { data, error } = await supabase
     .from('cards')
     .select('*')
@@ -108,10 +125,31 @@ export const fetchCardsFromSupabase = async (): Promise<CardData[]> => {
 
   if (error) {
     console.error('Error fetching cards from Supabase:', error);
+    try {
+      const cached = localStorage.getItem(CARDS_CACHE_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch {}
     throw error;
   }
 
-  return (data as DbCardRow[]).map(rowToCard);
+  const cards = (data as DbCardRow[]).map(rowToCard);
+
+  try {
+    localStorage.setItem(CARDS_CACHE_KEY, JSON.stringify(cards));
+    localStorage.setItem(CARDS_CACHE_TIME_KEY, Date.now().toString());
+  } catch {}
+
+  return cards;
+};
+
+/**
+ * Invalida manualmente la caché de cartas
+ */
+export const invalidateCardsCache = () => {
+  try {
+    localStorage.removeItem(CARDS_CACHE_KEY);
+    localStorage.removeItem(CARDS_CACHE_TIME_KEY);
+  } catch {}
 };
 
 /**
@@ -127,6 +165,22 @@ export const saveCardToSupabase = async (card: CardData): Promise<void> => {
     console.error('Error saving card to Supabase:', error);
     throw error;
   }
+
+  // Actualizar también la caché local para no requerir re-descarga completa
+  try {
+    const cached = localStorage.getItem(CARDS_CACHE_KEY);
+    if (cached) {
+      const list: CardData[] = JSON.parse(cached);
+      const idx = list.findIndex(c => c.id === card.id);
+      if (idx >= 0) {
+        list[idx] = card;
+      } else {
+        list.push(card);
+      }
+      localStorage.setItem(CARDS_CACHE_KEY, JSON.stringify(list));
+      localStorage.setItem(CARDS_CACHE_TIME_KEY, Date.now().toString());
+    }
+  } catch {}
 };
 
 /**
@@ -142,6 +196,11 @@ export const syncAllCardsToSupabase = async (cards: CardData[]): Promise<void> =
     console.error('Error syncing all cards to Supabase:', error);
     throw error;
   }
+
+  try {
+    localStorage.setItem(CARDS_CACHE_KEY, JSON.stringify(cards));
+    localStorage.setItem(CARDS_CACHE_TIME_KEY, Date.now().toString());
+  } catch {}
 };
 
 /**
