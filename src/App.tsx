@@ -238,12 +238,91 @@ export function App() {
     }
   }, [packConfig]);
 
+const VALID_BUILDER_VIEWS: BuilderViewMode[] = [
+  'card_builder',
+  'pack_builder',
+  'pack_management',
+  'gift_cards',
+  'gift_codes',
+];
+
+const getInitialBuilderView = (): BuilderViewMode => {
+  try {
+    const rawHash = (window.location.hash || '').replace(/^#+/, '').trim().toLowerCase();
+    if (VALID_BUILDER_VIEWS.includes(rawHash as BuilderViewMode)) {
+      return rawHash as BuilderViewMode;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = (params.get('tab') || '').trim().toLowerCase();
+    if (VALID_BUILDER_VIEWS.includes(tabParam as BuilderViewMode)) {
+      return tabParam as BuilderViewMode;
+    }
+    const saved = localStorage.getItem('tokkii_builder_current_view') as BuilderViewMode;
+    if (saved && VALID_BUILDER_VIEWS.includes(saved)) {
+      return saved;
+    }
+  } catch {
+    // fallback
+  }
+  return 'card_builder';
+};
+
   // Active view: card_builder vs pack_builder vs pack_management vs gift_cards
-  const [currentView, setCurrentView] = useState<BuilderViewMode>('card_builder');
+  const [currentView, setCurrentView] = useState<BuilderViewMode>(getInitialBuilderView);
   
   // Card studio mode: 'collection' (4-column grid) vs 'editor' (3D viewer + adjustment panel)
-  const [cardStudioMode, setCardStudioMode] = useState<'collection' | 'editor'>('collection');
-  const [selectedCardId, setSelectedCardId] = useState<string>(cards[0]?.id || 'tokkii-001');
+  const [cardStudioMode, setCardStudioMode] = useState<'collection' | 'editor'>(() => {
+    try {
+      const savedMode = localStorage.getItem('tokkii_builder_card_studio_mode');
+      if (savedMode === 'editor' || savedMode === 'collection') return savedMode;
+    } catch {}
+    return 'collection';
+  });
+  const [selectedCardId, setSelectedCardId] = useState<string>(() => {
+    try {
+      const savedId = localStorage.getItem('tokkii_builder_selected_card_id');
+      if (savedId) return savedId;
+    } catch {}
+    return cards[0]?.id || 'tokkii-001';
+  });
+
+  // Keep URL hash and localStorage in sync with current view
+  useEffect(() => {
+    try {
+      localStorage.setItem('tokkii_builder_current_view', currentView);
+      if (window.location.hash.replace(/^#+/, '') !== currentView) {
+        window.history.replaceState(null, '', `#${currentView}`);
+      }
+    } catch {}
+  }, [currentView]);
+
+  // Listen to browser forward/back buttons (hashchange)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace(/^#+/, '').trim().toLowerCase() as BuilderViewMode;
+      if (VALID_BUILDER_VIEWS.includes(hash)) {
+        setCurrentView(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Save studio mode and selected card
+  useEffect(() => {
+    try {
+      localStorage.setItem('tokkii_builder_card_studio_mode', cardStudioMode);
+    } catch {}
+  }, [cardStudioMode]);
+
+  useEffect(() => {
+    try {
+      if (selectedCardId) {
+        localStorage.setItem('tokkii_builder_selected_card_id', selectedCardId);
+      }
+    } catch {}
+  }, [selectedCardId]);
+
   const [isPackSimulatorOpen, setIsPackSimulatorOpen] = useState(false);
   const [isBatchImageModalOpen, setIsBatchImageModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);

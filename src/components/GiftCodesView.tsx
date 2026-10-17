@@ -14,7 +14,8 @@ import {
   Search,
   AlertCircle,
   Shuffle,
-  X
+  X,
+  HelpCircle
 } from 'lucide-react';
 import {
   fetchGiftCodesWithStats,
@@ -24,6 +25,31 @@ import {
   type GiftCodeWithStats,
   type PackType
 } from '../services/giftCodeService';
+import {
+  getDiscordWebhookUrl,
+  setDiscordWebhookUrl,
+  isDiscordWebhookConfigured,
+  publishGiftCodeToDiscord,
+  testDiscordWebhook,
+  getDiscordNotifyMode,
+  setDiscordNotifyMode,
+  getDiscordCustomMessage,
+  setDiscordCustomMessage,
+  getDiscordCustomTitle,
+  setDiscordCustomTitle,
+  getDiscordCustomDescription,
+  setDiscordCustomDescription,
+  DEFAULT_DISCORD_MESSAGE,
+  DEFAULT_DISCORD_TITLE,
+  DEFAULT_DISCORD_DESCRIPTION,
+  type DiscordNotifyMode
+} from '../services/discordWebhookService';
+
+const DiscordIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+  </svg>
+);
 
 interface GiftCodesViewProps {
   onShowToast: (msg: string) => void;
@@ -35,6 +61,25 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
+
+  // Discord Webhook State
+  const [publishingCodeId, setPublishingCodeId] = useState<string | null>(null);
+  const [publishedCodes, setPublishedCodes] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('tokkii_published_discord_codes');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set();
+  });
+  const [isDiscordModalOpen, setIsDiscordModalOpen] = useState(false);
+  const [discordWebhookUrl, setDiscordWebhookUrlState] = useState<string>(() => getDiscordWebhookUrl());
+  const [discordNotifyMode, setDiscordNotifyModeState] = useState<DiscordNotifyMode>(() => getDiscordNotifyMode());
+  const [discordCustomMessage, setDiscordCustomMessageState] = useState<string>(() => getDiscordCustomMessage());
+  const [discordCustomTitle, setDiscordCustomTitleState] = useState<string>(() => getDiscordCustomTitle());
+  const [discordCustomDesc, setDiscordCustomDescState] = useState<string>(() => getDiscordCustomDescription());
+  const [isTestingDiscord, setIsTestingDiscord] = useState(false);
+  const [discordTestFeedback, setDiscordTestFeedback] = useState<{ success: boolean; message: string } | null>(null);
+  const [codeToPublishAfterConfig, setCodeToPublishAfterConfig] = useState<GiftCodeWithStats | null>(null);
 
   // Form State
   const [codeWord, setCodeWord] = useState<string>('');
@@ -86,6 +131,91 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
       setTimeout(() => setCopiedCodeId(null), 2500);
     } catch {
       onShowToast(`Código: ${codeStr}`);
+    }
+  };
+
+  // Discord Publishing Handler
+  const handlePublishToDiscord = async (code: GiftCodeWithStats) => {
+    if (!isDiscordWebhookConfigured()) {
+      setCodeToPublishAfterConfig(code);
+      setDiscordTestFeedback(null);
+      setIsDiscordModalOpen(true);
+      return;
+    }
+
+    try {
+      setPublishingCodeId(code.id);
+      const result = await publishGiftCodeToDiscord(code);
+      if (result.success) {
+        setPublishedCodes((prev) => {
+          const next = new Set(prev).add(code.id);
+          try {
+            localStorage.setItem('tokkii_published_discord_codes', JSON.stringify([...next]));
+          } catch {}
+          return next;
+        });
+        onShowToast(`✅ ¡Código "${code.code}" publicado en tu canal de Discord!`);
+      } else {
+        onShowToast(`❌ ${result.error || 'No se pudo publicar en Discord'}`);
+      }
+    } catch (err: any) {
+      onShowToast(`❌ Error al conectar con Discord: ${err?.message || err}`);
+    } finally {
+      setPublishingCodeId(null);
+    }
+  };
+
+  // Discord Config Modal Handlers
+  const handleSaveDiscordConfig = async (andPublish: boolean = false) => {
+    if (!discordWebhookUrl.trim()) {
+      setDiscordTestFeedback({ success: false, message: 'Por favor ingresa una URL de Webhook válida.' });
+      return;
+    }
+    setDiscordWebhookUrl(discordWebhookUrl.trim());
+    setDiscordNotifyMode(discordNotifyMode);
+    setDiscordCustomMessage(discordCustomMessage);
+    setDiscordCustomTitle(discordCustomTitle);
+    setDiscordCustomDescription(discordCustomDesc);
+    onShowToast('💾 Configuración de Discord guardada.');
+
+    if (andPublish && codeToPublishAfterConfig) {
+      const code = codeToPublishAfterConfig;
+      setCodeToPublishAfterConfig(null);
+      setIsDiscordModalOpen(false);
+      await handlePublishToDiscord(code);
+    } else {
+      setIsDiscordModalOpen(false);
+    }
+  };
+
+  const handleTestDiscordWebhook = async () => {
+    if (!discordWebhookUrl.trim()) {
+      setDiscordTestFeedback({ success: false, message: 'Ingresa la URL del Webhook primero.' });
+      return;
+    }
+    try {
+      setIsTestingDiscord(true);
+      setDiscordTestFeedback(null);
+      const res = await testDiscordWebhook(discordWebhookUrl.trim());
+      if (res.success) {
+        setDiscordTestFeedback({ success: true, message: '¡Prueba exitosa! Revisa el mensaje enviado a tu canal de Discord.' });
+      } else {
+        setDiscordTestFeedback({ success: false, message: res.error || 'Error al conectar con Discord.' });
+      }
+    } catch (err: any) {
+      setDiscordTestFeedback({ success: false, message: err?.message || 'Error de red.' });
+    } finally {
+      setIsTestingDiscord(false);
+    }
+  };
+
+  const handleInsertTag = (tag: string, target: 'message' | 'title' | 'desc') => {
+    if (target === 'message') {
+      setDiscordCustomMessageState((prev) => (prev ? `${prev} ${tag}` : tag));
+    } else if (target === 'title') {
+      setDiscordCustomTitleState((prev) => (prev ? `${prev} ${tag}` : tag));
+    } else {
+      setDiscordCustomDescState((prev) => (prev ? `${prev} ${tag}` : tag));
     }
   };
 
@@ -532,16 +662,36 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
 
         {/* RIGHT COLUMN: List of Existing Codes (7 Cols) */}
         <div className="lg:col-span-7 space-y-4">
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por código o descripción..."
-              className="w-full bg-slate-900/80 border border-slate-800 rounded-2xl pl-11 pr-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-            />
+          {/* Search Bar & Discord Webhook Settings Button */}
+          <div className="flex items-center gap-2.5">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar por código o descripción..."
+                className="w-full bg-slate-900/80 border border-slate-800 rounded-2xl pl-11 pr-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setDiscordTestFeedback(null);
+                setIsDiscordModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-3.5 sm:px-4 py-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-[#5865F2]/80 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
+              title="Configurar el canal y Webhook de Discord"
+            >
+              <DiscordIcon className="w-4 h-4 text-[#5865F2]" />
+              <span className="hidden sm:inline">Ajustes Discord</span>
+              {isDiscordWebhookConfigured() ? (
+                <span className="w-2 h-2 rounded-full bg-emerald-400" title="Webhook Configurado" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title="Sin configurar" />
+              )}
+            </button>
           </div>
 
           {/* List of Codes */}
@@ -627,9 +777,38 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                         </div>
                       </div>
 
-                      {/* Right: Reward Pill */}
-                      <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border bg-gradient-to-r ${getPackColor(code.pack_type)}`}>
+                      {/* Right: Discord Button & Reward Pill */}
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
+                        {/* Botón Publicar en Discord */}
+                        <button
+                          type="button"
+                          onClick={() => handlePublishToDiscord(code)}
+                          disabled={publishingCodeId === code.id}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ${
+                            publishedCodes.has(code.id)
+                              ? 'bg-[#5865F2]/20 text-[#a5b4fc] border border-[#5865F2]/40 hover:bg-[#5865F2]/30'
+                              : 'bg-[#5865F2] hover:bg-[#4752C4] text-white border border-[#5865F2]/80 shadow-[0_0_12px_rgba(88,101,242,0.35)]'
+                          }`}
+                          title="Publicar este código de regalo directamente en Discord"
+                        >
+                          {publishingCodeId === code.id ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : publishedCodes.has(code.id) ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-300" />
+                          ) : (
+                            <DiscordIcon className="w-3.5 h-3.5 text-white" />
+                          )}
+                          <span>
+                            {publishingCodeId === code.id
+                              ? 'Publicando...'
+                              : publishedCodes.has(code.id)
+                              ? 'Publicado'
+                              : 'Publicar en Discord'}
+                          </span>
+                        </button>
+
+                        {/* Burbuja del tipo de sobre */}
+                        <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border bg-gradient-to-r shrink-0 ${getPackColor(code.pack_type)}`}>
                           🎁 {getPackLabel(code.pack_type, code.pack_quantity)}
                         </span>
                       </div>
@@ -854,6 +1033,315 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Discord Webhook Configuration */}
+      {isDiscordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in">
+          <div className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto no-scrollbar bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 text-left animate-in zoom-in-95 duration-200">
+            {/* Ambient glow */}
+            <div className="absolute -top-20 -right-20 w-44 h-44 bg-[#5865F2]/20 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 relative">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#5865F2] flex items-center justify-center text-white shadow-[0_0_15px_rgba(88,101,242,0.4)]">
+                  <DiscordIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-white text-base leading-tight">
+                    Canal y Webhook de Discord
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Publicación automática de códigos en tu servidor
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDiscordModalOpen(false);
+                  setCodeToPublishAfterConfig(null);
+                }}
+                className="p-1 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* If opening because of a pending code publication */}
+            {codeToPublishAfterConfig && (
+              <div className="p-3 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block">Configura tu Webhook para publicar:</span>
+                  <span className="text-[11px] text-amber-200/90">
+                    Estás a punto de publicar el código <strong className="font-mono bg-black/40 px-1 rounded">{codeToPublishAfterConfig.code}</strong>. Al guardar tu Webhook se enviará automáticamente a tu canal.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Step-by-Step Instructions */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2 text-xs">
+              <span className="font-bold text-slate-200 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                <HelpCircle className="w-3.5 h-3.5 text-[#5865F2]" />
+                ¿Cómo obtener el enlace del Webhook en Discord?
+              </span>
+              <ol className="space-y-1.5 text-slate-400 text-[11px] list-decimal list-inside pl-1">
+                <li>En Discord, ve al canal donde publicarás y haz clic en el engranaje <strong>⚙️ Editar canal</strong>.</li>
+                <li>Entra a la pestaña <strong>Integraciones</strong> y haz clic en <strong>Webhooks</strong>.</li>
+                <li>Haz clic en <strong>Nuevo Webhook</strong>, asígnale el nombre que prefieras (ej: <em>EvilTokkii Bot</em>).</li>
+                <li>Pulsa en <strong>Copiar URL de Webhook</strong> y pégala en el campo a continuación.</li>
+              </ol>
+            </div>
+
+            {/* Webhook URL Input */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-300">
+                URL del Webhook de Discord *
+              </label>
+              <input
+                type="url"
+                value={discordWebhookUrl}
+                onChange={(e) => setDiscordWebhookUrlState(e.target.value)}
+                placeholder="https://discord.com/api/webhooks/..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-[#5865F2]"
+              />
+              <p className="text-[10px] text-slate-500">
+                Se guardará de forma segura en tu navegador local para que no tengas que escribirlo cada vez.
+              </p>
+            </div>
+
+            {/* Notify Mention Option */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-300">
+                Notificación / Mención al publicar
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDiscordNotifyModeState('none')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
+                    discordNotifyMode === 'none'
+                      ? 'bg-[#5865F2]/20 border-[#5865F2] text-white'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  Sin mención
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDiscordNotifyModeState('here')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
+                    discordNotifyMode === 'here'
+                      ? 'bg-[#5865F2]/20 border-[#5865F2] text-white'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  @here (Conectados)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDiscordNotifyModeState('everyone')}
+                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
+                    discordNotifyMode === 'everyone'
+                      ? 'bg-[#5865F2]/20 border-[#5865F2] text-white'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  @everyone (Todos)
+                </button>
+              </div>
+            </div>
+
+            {/* Custom Announcement Message Field */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-300">
+                  Mensaje de Anuncio (Chat de Discord)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setDiscordCustomMessageState(DEFAULT_DISCORD_MESSAGE)}
+                  className="text-[10px] text-slate-400 hover:text-amber-400 transition-colors cursor-pointer"
+                >
+                  Restablecer
+                </button>
+              </div>
+              <textarea
+                rows={2}
+                value={discordCustomMessage}
+                onChange={(e) => setDiscordCustomMessageState(e.target.value)}
+                placeholder="Escribe el mensaje de anuncio que acompañará la publicación en el chat..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#5865F2] resize-none"
+              />
+              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-400">
+                <span className="text-slate-500">Variables dinámicas:</span>
+                {[
+                  { tag: '{codigo}', label: 'Código' },
+                  { tag: '{sobre}', label: 'Sobre' },
+                  { tag: '{usos}', label: 'Usos' },
+                  { tag: '{nota}', label: 'Nota' },
+                ].map((item) => (
+                  <button
+                    key={item.tag}
+                    type="button"
+                    onClick={() => handleInsertTag(item.tag, 'message')}
+                    className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-[#5865F2]/30 hover:text-white border border-slate-700 transition-colors font-mono cursor-pointer"
+                    title={`Insertar ${item.tag} en el mensaje`}
+                  >
+                    +{item.tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Title inside Embed Card */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-300">
+                  Título de la Tarjeta (Embed)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setDiscordCustomTitleState(DEFAULT_DISCORD_TITLE)}
+                  className="text-[10px] text-slate-400 hover:text-amber-400 transition-colors cursor-pointer"
+                >
+                  Restablecer
+                </button>
+              </div>
+              <input
+                type="text"
+                value={discordCustomTitle}
+                onChange={(e) => setDiscordCustomTitleState(e.target.value)}
+                placeholder="Título destacado dentro del embed..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#5865F2]"
+              />
+              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-400">
+                <span className="text-slate-500">Variables dinámicas:</span>
+                {[
+                  { tag: '{codigo}', label: 'Código' },
+                  { tag: '{sobre}', label: 'Sobre' },
+                  { tag: '{usos}', label: 'Usos' },
+                  { tag: '{nota}', label: 'Nota' },
+                ].map((item) => (
+                  <button
+                    key={item.tag}
+                    type="button"
+                    onClick={() => handleInsertTag(item.tag, 'title')}
+                    className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-[#5865F2]/30 hover:text-white border border-slate-700 transition-colors font-mono cursor-pointer"
+                    title={`Insertar ${item.tag} en el título`}
+                  >
+                    +{item.tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Description inside Embed Card */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-300">
+                  Descripción dentro de la Tarjeta (Embed)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setDiscordCustomDescState(DEFAULT_DISCORD_DESCRIPTION)}
+                  className="text-[10px] text-slate-400 hover:text-amber-400 transition-colors cursor-pointer"
+                >
+                  Restablecer
+                </button>
+              </div>
+              <textarea
+                rows={2}
+                value={discordCustomDesc}
+                onChange={(e) => setDiscordCustomDescState(e.target.value)}
+                placeholder="Texto explicativo dentro del recuadro del embed..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#5865F2] resize-none"
+              />
+              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-400">
+                <span className="text-slate-500">Variables dinámicas:</span>
+                {[
+                  { tag: '{codigo}', label: 'Código' },
+                  { tag: '{sobre}', label: 'Sobre' },
+                  { tag: '{usos}', label: 'Usos' },
+                  { tag: '{nota}', label: 'Nota' },
+                ].map((item) => (
+                  <button
+                    key={item.tag}
+                    type="button"
+                    onClick={() => handleInsertTag(item.tag, 'desc')}
+                    className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-[#5865F2]/30 hover:text-white border border-slate-700 transition-colors font-mono cursor-pointer"
+                    title={`Insertar ${item.tag} en la descripción`}
+                  >
+                    +{item.tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Test Feedback */}
+            {discordTestFeedback && (
+              <div
+                className={`p-3 rounded-2xl border text-xs flex items-center gap-2 ${
+                  discordTestFeedback.success
+                    ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300'
+                    : 'bg-red-950/60 border-red-500/50 text-red-300'
+                }`}
+              >
+                {discordTestFeedback.success ? (
+                  <Check className="w-4 h-4 shrink-0 text-emerald-400" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                )}
+                <span>{discordTestFeedback.message}</span>
+              </div>
+            )}
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleTestDiscordWebhook}
+                disabled={isTestingDiscord || !discordWebhookUrl.trim()}
+                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+              >
+                {isTestingDiscord ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <DiscordIcon className="w-3.5 h-3.5 text-[#5865F2]" />
+                )}
+                <span>{isTestingDiscord ? 'Probando...' : 'Probar Conexión'}</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDiscordModalOpen(false);
+                    setCodeToPublishAfterConfig(null);
+                  }}
+                  className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveDiscordConfig(Boolean(codeToPublishAfterConfig))}
+                  disabled={!discordWebhookUrl.trim()}
+                  className="py-2.5 px-5 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold text-xs shadow-lg shadow-[#5865F2]/30 transition-all cursor-pointer disabled:opacity-40 flex items-center gap-1.5 active:scale-95"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>
+                    {codeToPublishAfterConfig ? 'Guardar y Publicar' : 'Guardar Configuración'}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
