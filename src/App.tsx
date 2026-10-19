@@ -75,8 +75,12 @@ export function App() {
             const local = localMap.get(defCard.id);
             if (!local) return defCard;
             return {
-              ...defCard,
               ...local,
+              ...defCard,
+              rarity: (local.rarity && local.rarity !== 'common') ? local.rarity : defCard.rarity,
+              customHoloStyle: local.customHoloStyle || defCard.customHoloStyle,
+              customFoilOpacity: local.customFoilOpacity ?? defCard.customFoilOpacity,
+              customMaskOpacity: local.customMaskOpacity ?? defCard.customMaskOpacity,
               image: local.image && !local.image.includes('tokkii_photographer.jpg') ? local.image : defCard.image,
             };
           });
@@ -104,6 +108,10 @@ export function App() {
               return {
                 ...card,
                 ...fromIdb,
+                rarity: (fromIdb.rarity && fromIdb.rarity !== 'common') ? fromIdb.rarity : card.rarity,
+                customHoloStyle: fromIdb.customHoloStyle || card.customHoloStyle,
+                customFoilOpacity: fromIdb.customFoilOpacity ?? card.customFoilOpacity,
+                customMaskOpacity: fromIdb.customMaskOpacity ?? card.customMaskOpacity,
                 image: fromIdb.image && !fromIdb.image.includes('tokkii_photographer.jpg') ? fromIdb.image : card.image,
               };
             });
@@ -120,7 +128,7 @@ export function App() {
   useEffect(() => {
     const loadFromSupabase = async () => {
       try {
-        const supabaseCards = await fetchCardsFromSupabase();
+        const supabaseCards = await fetchCardsFromSupabase(true);
         if (supabaseCards && supabaseCards.length > 0) {
           setCards((currentCards) => {
             const currentMap = new Map(currentCards.map((c) => [c.id, c]));
@@ -146,8 +154,20 @@ export function App() {
                 ? sbCard.image 
                 : (localHasCustomImg ? localCard.image : (defHasCustomImg ? defCard.image : sbCard.image));
 
+              const finalRarity = sbCard.rarity || defCard?.rarity || 'common';
+              const finalHoloStyle = sbCard.customHoloStyle || defCard?.customHoloStyle;
+              const finalFoilOpacity = sbCard.customFoilOpacity ?? defCard?.customFoilOpacity;
+              const finalMaskOpacity = sbCard.customMaskOpacity ?? defCard?.customMaskOpacity;
+              const finalIsFullArt = defCard?.isFullArt !== undefined ? defCard.isFullArt : sbCard.isFullArt;
+
               return {
+                ...defCard,
                 ...sbCard,
+                rarity: finalRarity,
+                customHoloStyle: finalHoloStyle,
+                customFoilOpacity: finalFoilOpacity,
+                customMaskOpacity: finalMaskOpacity,
+                isFullArt: finalIsFullArt,
                 attacks: attacks || sbCard.attacks,
                 weakness: sbCard.weakness || defCard?.weakness,
                 resistance: sbCard.resistance || defCard?.resistance,
