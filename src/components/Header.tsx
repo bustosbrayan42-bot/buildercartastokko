@@ -149,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <a
-            href="https://bustosbrayan42-bot.github.io/cartastokko/"
+            href="https://tcg.eviltokkii.online/Home"
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition-colors"

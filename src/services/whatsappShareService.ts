@@ -1,7 +1,7 @@
 import type { GiftCodeWithStats } from './giftCodeService';
 
 const WHATSAPP_CUSTOM_TEMPLATE_KEY = 'tokkii_whatsapp_custom_template';
-export const TCG_WEB_OFFICIAL_URL = 'https://bustosbrayan42-bot.github.io/cartastokko/';
+export const TCG_WEB_OFFICIAL_URL = 'https://tcg.eviltokkii.online/Home';
 
 export const DEFAULT_WHATSAPP_TEMPLATE = 
 `🎁 *¡NUEVO CÓDIGO DE REGALO - EVILTOKKII TCG!* 🎁
@@ -26,7 +26,18 @@ export const DEFAULT_WHATSAPP_TEMPLATE =
 export const getWhatsAppCustomTemplate = (): string => {
   try {
     const saved = localStorage.getItem(WHATSAPP_CUSTOM_TEMPLATE_KEY);
-    if (saved !== null && saved.trim().length > 0) return saved;
+    if (saved !== null && saved.trim().length > 0) {
+      if (saved.includes('bustosbrayan42-bot.github.io/cartastokko')) {
+        const migrated = saved
+          .replaceAll('https://bustosbrayan42-bot.github.io/cartastokko/', TCG_WEB_OFFICIAL_URL)
+          .replaceAll('https://bustosbrayan42-bot.github.io/cartastokko', TCG_WEB_OFFICIAL_URL);
+        try {
+          localStorage.setItem(WHATSAPP_CUSTOM_TEMPLATE_KEY, migrated);
+        } catch {}
+        return migrated;
+      }
+      return saved;
+    }
   } catch {}
   return DEFAULT_WHATSAPP_TEMPLATE;
 };
@@ -98,7 +109,9 @@ export const formatWhatsAppMessage = (
     .replaceAll('{usos}', totalUsesText)
     .replaceAll('{limite_usuario}', userLimitText)
     .replaceAll('{nota}', noteText)
-    .replaceAll('{url}', TCG_WEB_OFFICIAL_URL);
+    .replaceAll('{url}', TCG_WEB_OFFICIAL_URL)
+    .replaceAll('https://bustosbrayan42-bot.github.io/cartastokko/', TCG_WEB_OFFICIAL_URL)
+    .replaceAll('https://bustosbrayan42-bot.github.io/cartastokko', TCG_WEB_OFFICIAL_URL);
 
   return formatted.trim();
 };

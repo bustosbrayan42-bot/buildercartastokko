@@ -336,7 +336,7 @@ export const publishGiftCodeToDiscord = async (
           {
             name: '🌐 ¿Cómo y Dónde Canjearlo?',
             value:
-              '1. Abre la web: [**EvilTokkii TCG Oficial**](https://bustosbrayan42-bot.github.io/cartastokko/)\n' +
+              '1. Abre la web: [**EvilTokkii TCG Oficial**](https://tcg.eviltokkii.online/Home)\n' +
               '2. Inicia sesión con tu cuenta de Twitch.\n' +
               '3. Haz clic en el botón **"Canjear Código"** en la barra superior.\n' +
               '4. Pega el código **`' +
