@@ -798,19 +798,19 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       {/* Left: Code badge and info */}
-                      <div className="flex items-start gap-3">
-                        <div className="p-2.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
-                          <Ticket className={`w-5 h-5 ${code.is_active && !code.is_exhausted ? 'text-emerald-400' : 'text-slate-500'}`} />
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
+                          <Ticket className={`w-4 h-4 ${code.is_active && !code.is_exhausted ? 'text-emerald-400' : 'text-slate-500'}`} />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-black text-base text-white tracking-wider">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-nowrap">
+                            <span className="font-mono font-black text-sm sm:text-base text-white tracking-wider whitespace-nowrap select-all">
                               {code.code}
                             </span>
                             <button
                               onClick={() => handleCopyCode(code.code, code.id)}
                               title="Copiar código al portapapeles"
-                              className="p-1 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                              className="p-1 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
                             >
                               {copiedCodeId === code.id ? (
                                 <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -821,33 +821,33 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
 
                             {/* Status badge */}
                             {!code.is_active ? (
-                              <span className="text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-0.5 rounded-full border border-slate-700">
+                              <span className="text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-0.5 rounded-full border border-slate-700 whitespace-nowrap shrink-0">
                                 PAUSADO
                               </span>
                             ) : code.is_exhausted ? (
-                              <span className="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-2 py-0.5 rounded-full border border-amber-500/40">
+                              <span className="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-2 py-0.5 rounded-full border border-amber-500/40 whitespace-nowrap shrink-0">
                                 AGOTADO
                               </span>
                             ) : (
-                              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/40">
+                              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/40 whitespace-nowrap shrink-0">
                                 ACTIVO
                               </span>
                             )}
                           </div>
 
                           {code.description && (
-                            <p className="text-[11px] text-slate-400 mt-0.5">{code.description}</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-xs">{code.description}</p>
                           )}
                         </div>
                       </div>
 
-                      {/* Right: Share Buttons & Reward Pill */}
-                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
-                        {/* Botón Compartir en WhatsApp */}
+                      {/* Right: Compact Share Buttons & Reward Pill */}
+                      <div className="flex items-center gap-2 shrink-0 justify-end flex-wrap sm:flex-nowrap">
+                        {/* Botón WhatsApp */}
                         <button
                           type="button"
                           onClick={() => handleShareWhatsApp(code)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 shrink-0 bg-[#25D366] hover:bg-[#20ba5c] text-white border border-[#25D366]/80 shadow-[0_0_12px_rgba(37,211,102,0.35)]"
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 shrink-0 whitespace-nowrap bg-[#25D366] hover:bg-[#20ba5c] text-white border border-[#25D366]/80 shadow-[0_0_10px_rgba(37,211,102,0.3)]"
                           title="Compartir este código en WhatsApp (Grupo, Canal o Contacto) - 100% Gratis"
                         >
                           {whatsAppCopiedCodeId === code.id ? (
@@ -856,19 +856,19 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                             <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
                           )}
                           <span>
-                            {whatsAppCopiedCodeId === code.id ? '¡Enviado a WhatsApp!' : 'WhatsApp'}
+                            {whatsAppCopiedCodeId === code.id ? '¡Listo!' : 'WhatsApp'}
                           </span>
                         </button>
 
-                        {/* Botón Publicar en Discord */}
+                        {/* Botón Discord */}
                         <button
                           type="button"
                           onClick={() => handlePublishToDiscord(code)}
                           disabled={publishingCodeId === code.id}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ${
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap ${
                             publishedCodes.has(code.id)
                               ? 'bg-[#5865F2]/20 text-[#a5b4fc] border border-[#5865F2]/40 hover:bg-[#5865F2]/30'
-                              : 'bg-[#5865F2] hover:bg-[#4752C4] text-white border border-[#5865F2]/80 shadow-[0_0_12px_rgba(88,101,242,0.35)]'
+                              : 'bg-[#5865F2] hover:bg-[#4752C4] text-white border border-[#5865F2]/80 shadow-[0_0_10px_rgba(88,101,242,0.3)]'
                           }`}
                           title="Publicar este código de regalo directamente en Discord"
                         >
@@ -881,15 +881,15 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                           )}
                           <span>
                             {publishingCodeId === code.id
-                              ? 'Publicando...'
+                              ? 'Enviando...'
                               : publishedCodes.has(code.id)
                               ? 'Publicado'
-                              : 'Publicar en Discord'}
+                              : 'Discord'}
                           </span>
                         </button>
 
                         {/* Burbuja del tipo de sobre */}
-                        <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border bg-gradient-to-r shrink-0 ${getPackColor(code.pack_type)}`}>
+                        <span className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border bg-gradient-to-r shrink-0 whitespace-nowrap ${getPackColor(code.pack_type)}`}>
                           🎁 {getPackLabel(code.pack_type, code.pack_quantity)}
                         </span>
                       </div>
