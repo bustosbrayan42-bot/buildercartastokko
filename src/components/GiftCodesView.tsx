@@ -96,9 +96,15 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
   const [codeToPublishAfterConfig, setCodeToPublishAfterConfig] = useState<GiftCodeWithStats | null>(null);
 
   // WhatsApp Share State
+  const [publishedWhatsAppCodes, setPublishedWhatsAppCodes] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('tokkii_published_whatsapp_codes');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set();
+  });
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [whatsAppTemplateInput, setWhatsAppTemplateInput] = useState<string>(() => getWhatsAppCustomTemplate());
-  const [whatsAppCopiedCodeId, setWhatsAppCopiedCodeId] = useState<string | null>(null);
 
   // Form State
   const [codeWord, setCodeWord] = useState<string>('');
@@ -197,8 +203,15 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
       navigator.clipboard.writeText(message);
     } catch {}
 
-    setWhatsAppCopiedCodeId(code.id);
-    setTimeout(() => setWhatsAppCopiedCodeId(null), 3000);
+    // Marcar como publicado persistentemente (igual que Discord)
+    setPublishedWhatsAppCodes((prev) => {
+      const next = new Set(prev).add(code.id);
+      try {
+        localStorage.setItem('tokkii_published_whatsapp_codes', JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+
     onShowToast(`💬 ¡Abriendo WhatsApp con el código "${code.code}" listo para compartir!`);
   };
 
@@ -847,16 +860,24 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                         <button
                           type="button"
                           onClick={() => handleShareWhatsApp(code)}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 shrink-0 whitespace-nowrap bg-[#25D366] hover:bg-[#20ba5c] text-white border border-[#25D366]/80 shadow-[0_0_10px_rgba(37,211,102,0.3)]"
-                          title="Compartir este código en WhatsApp (Grupo, Canal o Contacto) - 100% Gratis"
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 shrink-0 whitespace-nowrap ${
+                            publishedWhatsAppCodes.has(code.id)
+                              ? 'bg-[#25D366]/20 text-emerald-300 border border-[#25D366]/40 hover:bg-[#25D366]/30'
+                              : 'bg-[#25D366] hover:bg-[#20ba5c] text-white border border-[#25D366]/80 shadow-[0_0_10px_rgba(37,211,102,0.3)]'
+                          }`}
+                          title={
+                            publishedWhatsAppCodes.has(code.id)
+                              ? 'Ya compartido en WhatsApp (Clic para volver a abrir)'
+                              : 'Compartir este código en WhatsApp (Grupo, Canal o Contacto) - 100% Gratis'
+                          }
                         >
-                          {whatsAppCopiedCodeId === code.id ? (
-                            <Check className="w-3.5 h-3.5 text-white" />
+                          {publishedWhatsAppCodes.has(code.id) ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-300" />
                           ) : (
                             <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
                           )}
                           <span>
-                            {whatsAppCopiedCodeId === code.id ? '¡Listo!' : 'WhatsApp'}
+                            {publishedWhatsAppCodes.has(code.id) ? 'Publicado' : 'WhatsApp'}
                           </span>
                         </button>
 
