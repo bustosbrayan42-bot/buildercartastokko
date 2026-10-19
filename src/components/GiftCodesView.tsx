@@ -44,10 +44,24 @@ import {
   DEFAULT_DISCORD_DESCRIPTION,
   type DiscordNotifyMode
 } from '../services/discordWebhookService';
+import {
+  getWhatsAppShareUrl,
+  formatWhatsAppMessage,
+  getWhatsAppCustomTemplate,
+  setWhatsAppCustomTemplate,
+  resetWhatsAppTemplate,
+  DEFAULT_WHATSAPP_TEMPLATE
+} from '../services/whatsappShareService';
 
 const DiscordIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
     <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+  </svg>
+);
+
+const WhatsAppIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12.031 2C6.511 2 2.025 6.486 2.025 12.006c0 1.838.498 3.633 1.445 5.209L2.01 22.01l4.945-1.428a9.98 9.98 0 0 0 5.076 1.39h.005c5.518 0 10.005-4.486 10.005-10.006C22.04 6.486 17.553 2 12.031 2zm0 18.286h-.004a8.28 8.28 0 0 1-4.214-1.155l-.302-.18-2.936.848.868-2.861-.197-.313a8.277 8.277 0 0 1-1.268-4.619c0-4.577 3.725-8.301 8.305-8.301 2.217 0 4.301.864 5.869 2.433a8.26 8.26 0 0 1 2.431 5.869c0 4.578-3.725 8.302-8.305 8.302zm4.551-6.223c-.249-.125-1.477-.729-1.706-.812-.229-.083-.396-.125-.563.125s-.646.812-.792.979-.292.188-.542.063c-.25-.125-1.054-.388-2.008-1.238-.742-.662-1.243-1.479-1.389-1.729-.146-.25-.016-.385.109-.509.112-.112.25-.292.375-.438.125-.146.167-.25.25-.417.083-.167.042-.313-.021-.438s-.563-1.354-.771-1.854c-.203-.488-.41-.422-.563-.43-.146-.008-.313-.01-.479-.01-.167 0-.438.063-.667.313s-.875.854-.875 2.083c0 1.229.896 2.417 1.021 2.583.125.167 1.763 2.692 4.271 3.775.597.258 1.063.412 1.427.528.6.19 1.146.163 1.577.099.481-.072 1.477-.604 1.686-1.188.208-.583.208-1.083.146-1.188-.063-.104-.229-.167-.479-.292z"/>
   </svg>
 );
 
@@ -80,6 +94,11 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
   const [isTestingDiscord, setIsTestingDiscord] = useState(false);
   const [discordTestFeedback, setDiscordTestFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [codeToPublishAfterConfig, setCodeToPublishAfterConfig] = useState<GiftCodeWithStats | null>(null);
+
+  // WhatsApp Share State
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [whatsAppTemplateInput, setWhatsAppTemplateInput] = useState<string>(() => getWhatsAppCustomTemplate());
+  const [whatsAppCopiedCodeId, setWhatsAppCopiedCodeId] = useState<string | null>(null);
 
   // Form State
   const [codeWord, setCodeWord] = useState<string>('');
@@ -163,6 +182,40 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
     } finally {
       setPublishingCodeId(null);
     }
+  };
+
+  // WhatsApp Share Handlers
+  const handleShareWhatsApp = (code: GiftCodeWithStats) => {
+    const url = getWhatsAppShareUrl(code, whatsAppTemplateInput);
+    const message = formatWhatsAppMessage(code, whatsAppTemplateInput);
+
+    // Abrir WhatsApp en pestaña nueva
+    window.open(url, '_blank', 'noopener,noreferrer');
+
+    // Copiar también al portapapeles para conveniencia
+    try {
+      navigator.clipboard.writeText(message);
+    } catch {}
+
+    setWhatsAppCopiedCodeId(code.id);
+    setTimeout(() => setWhatsAppCopiedCodeId(null), 3000);
+    onShowToast(`💬 ¡Abriendo WhatsApp con el código "${code.code}" listo para compartir!`);
+  };
+
+  const handleSaveWhatsAppTemplate = () => {
+    setWhatsAppCustomTemplate(whatsAppTemplateInput);
+    onShowToast('💾 Plantilla de WhatsApp guardada con éxito.');
+    setIsWhatsAppModalOpen(false);
+  };
+
+  const handleResetWhatsAppTemplate = () => {
+    resetWhatsAppTemplate();
+    setWhatsAppTemplateInput(DEFAULT_WHATSAPP_TEMPLATE);
+    onShowToast('🔄 Plantilla de WhatsApp restablecida al formato original.');
+  };
+
+  const handleInsertWhatsAppTag = (tag: string) => {
+    setWhatsAppTemplateInput((prev) => (prev ? `${prev} ${tag}` : tag));
   };
 
   // Discord Config Modal Handlers
@@ -692,6 +745,17 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title="Sin configurar" />
               )}
             </button>
+
+            {/* Botón Ajustes/Plantilla WhatsApp */}
+            <button
+              type="button"
+              onClick={() => setIsWhatsAppModalOpen(true)}
+              className="flex items-center gap-2 px-3.5 sm:px-4 py-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-[#25D366]/80 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
+              title="Personalizar plantilla de mensaje para compartir en WhatsApp (100% Gratis)"
+            >
+              <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
+              <span className="hidden sm:inline">Plantilla WhatsApp</span>
+            </button>
           </div>
 
           {/* List of Codes */}
@@ -777,8 +841,25 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                         </div>
                       </div>
 
-                      {/* Right: Discord Button & Reward Pill */}
+                      {/* Right: Share Buttons & Reward Pill */}
                       <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
+                        {/* Botón Compartir en WhatsApp */}
+                        <button
+                          type="button"
+                          onClick={() => handleShareWhatsApp(code)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 shrink-0 bg-[#25D366] hover:bg-[#20ba5c] text-white border border-[#25D366]/80 shadow-[0_0_12px_rgba(37,211,102,0.35)]"
+                          title="Compartir este código en WhatsApp (Grupo, Canal o Contacto) - 100% Gratis"
+                        >
+                          {whatsAppCopiedCodeId === code.id ? (
+                            <Check className="w-3.5 h-3.5 text-white" />
+                          ) : (
+                            <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
+                          )}
+                          <span>
+                            {whatsAppCopiedCodeId === code.id ? '¡Enviado a WhatsApp!' : 'WhatsApp'}
+                          </span>
+                        </button>
+
                         {/* Botón Publicar en Discord */}
                         <button
                           type="button"
@@ -1342,6 +1423,137 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                   </span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: WhatsApp Template & Preview */}
+      {isWhatsAppModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in">
+          <div className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto no-scrollbar bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 text-left animate-in zoom-in-95 duration-200">
+            {/* Ambient glow */}
+            <div className="absolute -top-20 -right-20 w-44 h-44 bg-[#25D366]/20 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 relative">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#25D366] flex items-center justify-center text-white shadow-[0_0_15px_rgba(37,211,102,0.4)]">
+                  <WhatsAppIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-white text-base leading-tight">
+                    Plantilla de Mensaje para WhatsApp
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Personaliza el texto que se enviará con 1 clic a tus grupos o canales
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWhatsAppModalOpen(false)}
+                className="p-1 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Info Box */}
+            <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs flex items-start gap-2.5">
+              <Check className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
+              <div className="leading-relaxed">
+                <strong className="block text-emerald-200 mb-0.5">100% Gratuito y sin comisiones</strong>
+                Este método utiliza el protocolo oficial <em>Click-to-Chat</em> de WhatsApp. Abre tu WhatsApp Web o móvil con el mensaje listo para enviar al grupo, canal o contacto que elijas sin cobrarte nada.
+              </div>
+            </div>
+
+            {/* Editor de Plantilla */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-300">
+                  Texto del Mensaje
+                </label>
+                <button
+                  type="button"
+                  onClick={handleResetWhatsAppTemplate}
+                  className="text-[10px] text-slate-400 hover:text-amber-400 transition-colors cursor-pointer"
+                >
+                  Restablecer original
+                </button>
+              </div>
+              <textarea
+                rows={8}
+                value={whatsAppTemplateInput}
+                onChange={(e) => setWhatsAppTemplateInput(e.target.value)}
+                placeholder="Escribe la plantilla del mensaje para WhatsApp..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#25D366] resize-none font-sans leading-relaxed"
+              />
+              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-400 pt-1">
+                <span className="text-slate-500">Variables automáticas:</span>
+                {[
+                  { tag: '{codigo}', label: '🔑 Código' },
+                  { tag: '{sobre}', label: '🎁 Sobre' },
+                  { tag: '{usos}', label: '👥 Usos' },
+                  { tag: '{limite_usuario}', label: '👤 Límite/Usuario' },
+                  { tag: '{nota}', label: '📝 Nota' },
+                  { tag: '{url}', label: '🌐 Link Web' },
+                ].map(({ tag, label }) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => handleInsertWhatsAppTag(tag)}
+                    className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Vista Previa en tiempo real */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <span>Vista previa aproximada en WhatsApp:</span>
+              </label>
+              <div className="bg-[#0b141a] border border-[#202c33] rounded-2xl p-4 text-xs text-[#e9edef] whitespace-pre-wrap font-sans leading-relaxed shadow-inner">
+                {formatWhatsAppMessage(
+                  {
+                    id: 'preview',
+                    code: 'PROMO-TOKKII',
+                    pack_type: 'pack_3',
+                    pack_quantity: 1,
+                    description: '¡Código de prueba para la comunidad!',
+                    max_total_uses: 25,
+                    max_uses_per_user: 1,
+                    is_active: true,
+                    created_at: new Date().toISOString(),
+                    total_used: 0,
+                    is_exhausted: false,
+                    redemptions: [],
+                  },
+                  whatsAppTemplateInput
+                )}
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsWhatsAppModalOpen(false)}
+                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveWhatsAppTemplate}
+                className="py-2.5 px-5 rounded-xl bg-[#25D366] hover:bg-[#20ba5c] text-white font-bold text-xs shadow-lg shadow-[#25D366]/30 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <Check className="w-4 h-4" />
+                <span>Guardar Plantilla</span>
+              </button>
             </div>
           </div>
         </div>
