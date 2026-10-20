@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import type { CardData, CardElement, Rarity } from '../types/card';
-import { RARITY_CONFIGS, ELEMENT_CONFIGS } from '../data/configs';
+import type { CardData, CardElement, Rarity, RarityConfig, CardEdition } from '../types/card';
+import { RARITY_CONFIGS, ELEMENT_CONFIGS, type ElementConfig } from '../data/configs';
 import { CardCanvas } from './CardCanvas';
 import {
   Plus,
@@ -9,9 +9,10 @@ import {
   Search,
   Download,
   Upload,
-  Layers,
   Edit3,
   Sparkles,
+  Flame,
+  Palette,
   X,
   CloudUpload,
   FileText,
@@ -20,6 +21,8 @@ import {
 
 interface CardCollectionViewProps {
   cards: CardData[];
+  currentEdition?: CardEdition;
+  onOpenEditionPicker?: () => void;
   onSelectAndEditCard: (id: string) => void;
   onAddNewCard: () => void;
   onDuplicateCard: (id: string) => void;
@@ -30,10 +33,15 @@ interface CardCollectionViewProps {
   onExportSql?: () => void;
   onOpenBatchImageExport?: () => void;
   isSyncingSupabase?: boolean;
+  rarityConfigs?: Record<Rarity, RarityConfig>;
+  elementConfigs?: Record<CardElement, ElementConfig>;
+  onOpenRarityModal?: () => void;
 }
 
 export const CardCollectionView: React.FC<CardCollectionViewProps> = ({
   cards,
+  currentEdition = 'goodtokkii',
+  onOpenEditionPicker,
   onSelectAndEditCard,
   onAddNewCard,
   onDuplicateCard,
@@ -44,7 +52,12 @@ export const CardCollectionView: React.FC<CardCollectionViewProps> = ({
   onExportSql,
   onOpenBatchImageExport,
   isSyncingSupabase,
+  rarityConfigs,
+  elementConfigs,
+  onOpenRarityModal,
 }) => {
+  const activeRarityConfigs = rarityConfigs || RARITY_CONFIGS;
+  const activeElementConfigs = elementConfigs || ELEMENT_CONFIGS;
   const [search, setSearch] = useState('');
   const [rarityFilter, setRarityFilter] = useState<Rarity | 'all'>('all');
   const [elementFilter, setElementFilter] = useState<CardElement | 'all'>('all');
@@ -92,20 +105,39 @@ export const CardCollectionView: React.FC<CardCollectionViewProps> = ({
       <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl backdrop-blur-md space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-[0_0_15px_rgba(234,179,8,0.2)]">
-              <Layers className="w-5 h-5" />
+            <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shadow-lg transition-colors ${
+              currentEdition === 'eviltokkii'
+                ? 'bg-rose-500/20 border-rose-500/40 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                : 'bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-[0_0_15px_rgba(234,179,8,0.2)]'
+            }`}>
+              {currentEdition === 'eviltokkii' ? <Flame className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl font-black text-white tracking-wide">
-                  Colección de Cartas TCG
+                  Colección {currentEdition === 'eviltokkii' ? 'EvilTokkii' : 'GoodTokkii'}
                 </h2>
-                <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-amber-400">
+                <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                  currentEdition === 'eviltokkii'
+                    ? 'bg-rose-950/80 border-rose-500/40 text-rose-300'
+                    : 'bg-slate-800 border-slate-700 text-amber-400'
+                }`}>
                   {filteredCards.length} de {cards.length} cartas
                 </span>
+                {onOpenEditionPicker && (
+                  <button
+                    type="button"
+                    onClick={onOpenEditionPicker}
+                    className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>🔄 Cambiar Edición</span>
+                  </button>
+                )}
               </div>
               <p className="text-xs text-slate-400">
-                Diseño completo y renderizado real de cada carta. Haz clic en cualquiera para abrir el editor y su vista 3D.
+                {currentEdition === 'eviltokkii'
+                  ? 'Expansión Sombra / Caos • R2: cartas_renderizadas_EvilTokkii'
+                  : 'Colección Génesis Original • R2: cartas_renderizadas'}
               </p>
             </div>
           </div>
@@ -184,6 +216,19 @@ export const CardCollectionView: React.FC<CardCollectionViewProps> = ({
                 className="hidden"
               />
             </label>
+
+            {/* Custom Rarity Palettes & Names Config */}
+            {onOpenRarityModal && (
+              <button
+                type="button"
+                onClick={onOpenRarityModal}
+                className="flex items-center gap-1.5 py-2.5 px-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-amber-300 border border-amber-500/30 hover:border-amber-400 transition-colors cursor-pointer"
+                title="Personalizar nombres y paleta de colores de rarezas para esta edición"
+              >
+                <Palette className="w-3.5 h-3.5 text-amber-400" />
+                <span>Paletas de Rarezas</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -225,7 +270,7 @@ export const CardCollectionView: React.FC<CardCollectionViewProps> = ({
               Todas ({cards.length})
             </button>
             {rarities.map((r) => {
-              const cfg = RARITY_CONFIGS[r];
+              const cfg = (rarityConfigs || RARITY_CONFIGS)[r] || RARITY_CONFIGS[r];
               const count = cards.filter((c) => c.rarity === r).length;
               const isSel = rarityFilter === r;
               return (
@@ -262,7 +307,7 @@ export const CardCollectionView: React.FC<CardCollectionViewProps> = ({
             Todos
           </button>
           {elements.map((elem) => {
-            const cfg = ELEMENT_CONFIGS[elem];
+            const cfg = activeElementConfigs[elem];
             const isSel = elementFilter === elem;
             const count = cards.filter((c) => c.element === elem).length;
             return (
@@ -302,6 +347,8 @@ export const CardCollectionView: React.FC<CardCollectionViewProps> = ({
                     scale={0.76}
                     interactive={false}
                     showControls={false}
+                    rarityConfigs={activeRarityConfigs}
+                    elementConfigs={activeElementConfigs}
                   />
                 </div>
 

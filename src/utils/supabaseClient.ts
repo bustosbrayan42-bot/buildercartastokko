@@ -85,6 +85,8 @@ export const rowToCard = (row: DbCardRow): CardData => ({
   artist: row.artist,
   flavorText: row.flavor_text,
   attacks: Array.isArray(row.attacks) ? row.attacks : [],
+  abilityName: Array.isArray(row.attacks) && row.attacks[0]?.name ? row.attacks[0].name : undefined,
+  abilityDesc: Array.isArray(row.attacks) && row.attacks[0]?.description ? row.attacks[0].description : undefined,
   retreatCost: Number(row.retreat_cost ?? 1),
   weakness: row.weakness || undefined,
   resistance: row.resistance || undefined,
@@ -113,17 +115,21 @@ export const invalidateCardsCache = () => {
 
 /**
  * Fetch all cards directly from Supabase (Cero caché, 100% en vivo)
+ * Soporta consultar 'cards' (GoodTokkii) o 'evil_cards' (EvilTokkii)
  */
-export const fetchCardsFromSupabase = async (_forceRefresh: boolean = false): Promise<CardData[]> => {
+export const fetchCardsFromSupabase = async (
+  _forceRefresh: boolean = false,
+  tableName: string = 'cards'
+): Promise<CardData[]> => {
   invalidateCardsCache();
 
   const { data, error } = await supabase
-    .from('cards')
+    .from(tableName)
     .select('*')
     .order('card_number', { ascending: true });
 
   if (error) {
-    console.error('Error fetching cards from Supabase:', error);
+    console.error(`Error fetching cards from Supabase (${tableName}):`, error);
     throw error;
   }
 
@@ -133,14 +139,14 @@ export const fetchCardsFromSupabase = async (_forceRefresh: boolean = false): Pr
 /**
  * Save / Upsert single card to Supabase
  */
-export const saveCardToSupabase = async (card: CardData): Promise<void> => {
+export const saveCardToSupabase = async (card: CardData, tableName: string = 'cards'): Promise<void> => {
   const row = cardToRow(card);
   const { error } = await supabase
-    .from('cards')
+    .from(tableName)
     .upsert(row, { onConflict: 'id' });
 
   if (error) {
-    console.error('Error saving card to Supabase:', error);
+    console.error(`Error saving card to Supabase (${tableName}):`, error);
     throw error;
   }
 
@@ -150,14 +156,14 @@ export const saveCardToSupabase = async (card: CardData): Promise<void> => {
 /**
  * Save multiple cards to Supabase (Sync all)
  */
-export const syncAllCardsToSupabase = async (cards: CardData[]): Promise<void> => {
+export const syncAllCardsToSupabase = async (cards: CardData[], tableName: string = 'cards'): Promise<void> => {
   const rows = cards.map(cardToRow);
   const { error } = await supabase
-    .from('cards')
+    .from(tableName)
     .upsert(rows, { onConflict: 'id' });
 
   if (error) {
-    console.error('Error syncing all cards to Supabase:', error);
+    console.error(`Error syncing all cards to Supabase (${tableName}):`, error);
     throw error;
   }
 
@@ -167,14 +173,14 @@ export const syncAllCardsToSupabase = async (cards: CardData[]): Promise<void> =
 /**
  * Delete card from Supabase
  */
-export const deleteCardFromSupabase = async (id: string): Promise<void> => {
+export const deleteCardFromSupabase = async (id: string, tableName: string = 'cards'): Promise<void> => {
   const { error } = await supabase
-    .from('cards')
+    .from(tableName)
     .delete()
     .eq('id', id);
 
   if (error) {
-    console.error('Error deleting card from Supabase:', error);
+    console.error(`Error deleting card from Supabase (${tableName}):`, error);
     throw error;
   }
 };

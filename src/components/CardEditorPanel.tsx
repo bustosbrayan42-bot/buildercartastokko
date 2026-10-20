@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import type { CardData, CardElement, Rarity, HoloStyle, CardAttack } from '../types/card';
-import { RARITY_CONFIGS, ELEMENT_CONFIGS } from '../data/configs';
+import type { CardData, CardElement, Rarity, RarityConfig, HoloStyle, CardAttack } from '../types/card';
+import { RARITY_CONFIGS, ELEMENT_CONFIGS, type ElementConfig } from '../data/configs';
 import {
   Sparkles,
   Upload,
@@ -34,6 +34,8 @@ interface CardEditorPanelProps {
   onChange: (updated: CardData) => void;
   onSaveToSupabase?: (card: CardData) => Promise<void>;
   onSaveToR2?: () => Promise<void | string | null>;
+  rarityConfigs?: Record<Rarity, RarityConfig>;
+  elementConfigs?: Record<CardElement, ElementConfig>;
 }
 
 export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
@@ -41,7 +43,11 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
   onChange,
   onSaveToSupabase,
   onSaveToR2,
+  rarityConfigs,
+  elementConfigs,
 }) => {
+  const activeRarityConfigs = rarityConfigs || RARITY_CONFIGS;
+  const activeElementConfigs = elementConfigs || ELEMENT_CONFIGS;
   const [activeTab, setActiveTab] = useState<'info' | 'art' | 'holo' | 'attacks' | 'stats'>('info');
   const [targetAttackIndex, setTargetAttackIndex] = useState<number>(0);
 
@@ -340,7 +346,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                 </label>
                 <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 p-2 bg-slate-950 rounded-2xl border border-slate-800">
                   {elements.map((elem) => {
-                    const cfg = ELEMENT_CONFIGS[elem];
+                    const cfg = activeElementConfigs[elem];
                     const selected = card.element === elem;
                     return (
                       <button
@@ -858,7 +864,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
               </label>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 p-2 bg-slate-950 rounded-2xl border border-slate-800">
                 {rarities.map((r) => {
-                  const cfg = RARITY_CONFIGS[r];
+                  const cfg = activeRarityConfigs[r] || RARITY_CONFIGS[r];
                   const selected = card.rarity === r;
                   return (
                     <button
@@ -896,7 +902,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                 Estilo de Lámina Holográfica (Foil Shader)
               </label>
               <select
-                value={card.customHoloStyle || RARITY_CONFIGS[card.rarity].defaultHoloStyle}
+                value={card.customHoloStyle || (activeRarityConfigs[card.rarity] || RARITY_CONFIGS[card.rarity]).defaultHoloStyle}
                 onChange={(e) => onChange({ ...card, customHoloStyle: e.target.value as HoloStyle })}
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400 cursor-pointer"
               >
@@ -1078,7 +1084,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                           title="Clic para remover"
                           className="w-5 h-5 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-[10px] hover:border-red-400 transition-all hover:scale-110"
                         >
-                          {ELEMENT_CONFIGS[c]?.symbol || '•'}
+                          {activeElementConfigs[c]?.symbol || '•'}
                         </button>
                       ))}
                     </div>
@@ -1089,10 +1095,10 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                           key={el}
                           type="button"
                           onClick={() => handleToggleCostEnergy(idx, el)}
-                          title={`Añadir energía ${ELEMENT_CONFIGS[el].name}`}
+                          title={`Añadir energía ${activeElementConfigs[el].name}`}
                           className="w-6 h-6 rounded-full bg-slate-900 border border-slate-800 hover:border-amber-400 text-xs flex items-center justify-center transition-transform hover:scale-115"
                         >
-                          {ELEMENT_CONFIGS[el].symbol}
+                          {activeElementConfigs[el].symbol}
                         </button>
                       ))}
                     </div>
@@ -1151,7 +1157,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                   <option value="">Ninguna</option>
                   {elements.map((el) => (
                     <option key={el} value={el}>
-                      {ELEMENT_CONFIGS[el].symbol} {ELEMENT_CONFIGS[el].name} (x2)
+                      {activeElementConfigs[el].symbol} {activeElementConfigs[el].name} (x2)
                     </option>
                   ))}
                 </select>
@@ -1174,7 +1180,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
                   <option value="">Ninguna</option>
                   {elements.map((el) => (
                     <option key={el} value={el}>
-                      {ELEMENT_CONFIGS[el].symbol} {ELEMENT_CONFIGS[el].name} (-30)
+                      {activeElementConfigs[el].symbol} {activeElementConfigs[el].name} (-30)
                     </option>
                   ))}
                 </select>

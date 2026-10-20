@@ -1,6 +1,6 @@
-import type { Rarity, RarityConfig, CardElement } from '../types/card';
+import type { Rarity, RarityConfig, CardElement, CardEdition } from '../types/card';
 
-export const RARITY_CONFIGS: Record<Rarity, RarityConfig> = {
+export const DEFAULT_GOOD_RARITY_CONFIGS: Record<Rarity, RarityConfig> = {
   common: {
     id: 'common',
     name: 'Común',
@@ -91,6 +91,136 @@ export const RARITY_CONFIGS: Record<Rarity, RarityConfig> = {
   }
 };
 
+export const DEFAULT_EVIL_RARITY_CONFIGS: Record<Rarity, RarityConfig> = {
+  common: {
+    id: 'common',
+    name: 'Sombra',
+    shortName: 'S',
+    color: '#64748b',
+    gradient: 'from-slate-800 to-slate-600',
+    glowColor: 'rgba(100, 116, 139, 0.4)',
+    borderColor: '#475569',
+    badgeBg: 'bg-slate-900/90 text-slate-300 border-slate-700',
+    defaultHoloStyle: 'none',
+    stars: 1,
+    description: 'Esencia base sombría nacida de las penumbras.'
+  },
+  uncommon: {
+    id: 'uncommon',
+    name: 'Maldita',
+    shortName: 'M',
+    color: '#8b5cf6',
+    gradient: 'from-violet-900 via-purple-700 to-indigo-950',
+    glowColor: 'rgba(139, 92, 246, 0.5)',
+    borderColor: '#7c3aed',
+    badgeBg: 'bg-purple-950/90 text-purple-300 border-purple-600',
+    defaultHoloStyle: 'wave',
+    defaultFoilOpacity: 0.7,
+    defaultGlareOpacity: 0.3,
+    stars: 2,
+    description: 'Impregnada de una maldición sutil que distorsiona la luz.'
+  },
+  rare: {
+    id: 'rare',
+    name: 'Abisal',
+    shortName: 'AB',
+    color: '#f43f5e',
+    gradient: 'from-rose-800 to-red-950',
+    glowColor: 'rgba(244, 63, 94, 0.6)',
+    borderColor: '#e11d48',
+    badgeBg: 'bg-rose-950/90 text-rose-300 border-rose-600',
+    defaultHoloStyle: 'glitter',
+    defaultFoilOpacity: 1.0,
+    defaultGlareOpacity: 0.22,
+    stars: 3,
+    description: 'Forjada en el abismo profundo con reflejos sangrientos.'
+  },
+  super_rare: {
+    id: 'super_rare',
+    name: 'Siniestra',
+    shortName: 'SIN',
+    color: '#ea580c',
+    gradient: 'from-orange-700 via-red-800 to-stone-950',
+    glowColor: 'rgba(234, 88, 12, 0.65)',
+    borderColor: '#c2410c',
+    badgeBg: 'bg-orange-950/90 text-orange-300 border-orange-600',
+    defaultHoloStyle: 'gold_stars',
+    defaultFoilOpacity: 0.85,
+    defaultGlareOpacity: 0.3,
+    stars: 4,
+    description: 'Poder destructivo con fuego oscuro y acabados incandescentes.'
+  },
+  ultra_rare: {
+    id: 'ultra_rare',
+    name: 'Caótica',
+    shortName: 'CAO',
+    color: '#d946ef',
+    gradient: 'from-fuchsia-700 via-pink-900 to-purple-950',
+    glowColor: 'rgba(217, 70, 239, 0.75)',
+    borderColor: '#c026d3',
+    badgeBg: 'bg-fuchsia-950/90 text-fuchsia-300 border-fuchsia-600',
+    defaultHoloStyle: 'secret_gold',
+    defaultFoilOpacity: 0.75,
+    defaultGlareOpacity: 0.25,
+    stars: 5,
+    description: 'Caos puro que quebranta el orden del juego.'
+  },
+  secret_rare: {
+    id: 'secret_rare',
+    name: 'Pesadilla Mítica',
+    shortName: 'PM',
+    color: '#e11d48',
+    gradient: 'from-rose-600 via-purple-900 to-amber-600',
+    glowColor: 'rgba(225, 29, 72, 0.9)',
+    borderColor: '#be123c',
+    badgeBg: 'bg-black/90 text-rose-400 border-rose-500',
+    defaultHoloStyle: 'prismatic',
+    defaultFoilOpacity: 0.95,
+    defaultGlareOpacity: 0.25,
+    stars: 6,
+    description: 'La cumbre de la oscuridad: una manifestación legendaria sin límites.'
+  }
+};
+
+/**
+ * Mantiene compatibilidad total con la configuración original de GoodTokkii
+ */
+export const RARITY_CONFIGS: Record<Rarity, RarityConfig> = DEFAULT_GOOD_RARITY_CONFIGS;
+
+export const getRarityConfigsForEdition = (edition: CardEdition): Record<Rarity, RarityConfig> => {
+  const key = `tokkii_rarity_configs_${edition}`;
+  const baseDefaults = edition === 'eviltokkii' ? DEFAULT_EVIL_RARITY_CONFIGS : DEFAULT_GOOD_RARITY_CONFIGS;
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ...baseDefaults, ...parsed };
+    }
+  } catch (e) {
+    console.error(`Error loading rarity configs for ${edition}:`, e);
+  }
+  return baseDefaults;
+};
+
+export const saveRarityConfigsForEdition = (edition: CardEdition, configs: Record<Rarity, RarityConfig>) => {
+  const key = `tokkii_rarity_configs_${edition}`;
+  try {
+    localStorage.setItem(key, JSON.stringify(configs));
+  } catch (e) {
+    console.error(`Error saving rarity configs for ${edition}:`, e);
+  }
+};
+
+export const resetRarityConfigsForEdition = (edition: CardEdition): Record<Rarity, RarityConfig> => {
+  const key = `tokkii_rarity_configs_${edition}`;
+  try {
+    localStorage.removeItem(key);
+  } catch (e) {
+    console.error(`Error resetting rarity configs for ${edition}:`, e);
+  }
+  return edition === 'eviltokkii' ? DEFAULT_EVIL_RARITY_CONFIGS : DEFAULT_GOOD_RARITY_CONFIGS;
+};
+
 export interface ElementConfig {
   id: CardElement;
   name: string;
@@ -100,7 +230,7 @@ export interface ElementConfig {
   borderBg: string;
 }
 
-export const ELEMENT_CONFIGS: Record<CardElement, ElementConfig> = {
+export const DEFAULT_GOOD_ELEMENT_CONFIGS: Record<CardElement, ElementConfig> = {
   arte: {
     id: 'arte',
     name: 'Arte',
@@ -181,4 +311,96 @@ export const ELEMENT_CONFIGS: Record<CardElement, ElementConfig> = {
     badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-400/50',
     borderBg: 'border-purple-300',
   },
+};
+
+export const DEFAULT_EVIL_ELEMENT_CONFIGS: Record<CardElement, ElementConfig> = {
+  arte: {
+    id: 'arte',
+    name: 'Arte Oscuro',
+    symbol: '🩸',
+    color: '#b91c1c',
+    badgeBg: 'bg-red-950/80 text-red-300 border-red-700/60',
+    borderBg: 'border-red-600',
+  },
+  impulso: {
+    id: 'impulso',
+    name: 'Furia',
+    symbol: '🔥',
+    color: '#ea580c',
+    badgeBg: 'bg-orange-950/80 text-orange-300 border-orange-700/60',
+    borderBg: 'border-orange-600',
+  },
+  ingenio: {
+    id: 'ingenio',
+    name: 'Maquinación',
+    symbol: '🕷️',
+    color: '#a21caf',
+    badgeBg: 'bg-fuchsia-950/80 text-fuchsia-300 border-fuchsia-700/60',
+    borderBg: 'border-fuchsia-600',
+  },
+  aura: {
+    id: 'aura',
+    name: 'Corrupción',
+    symbol: '🌑',
+    color: '#475569',
+    badgeBg: 'bg-slate-900/90 text-slate-300 border-slate-700/70',
+    borderBg: 'border-slate-500',
+  },
+  talento: {
+    id: 'talento',
+    name: 'Destrucción',
+    symbol: '⚒️',
+    color: '#dc2626',
+    badgeBg: 'bg-rose-950/80 text-rose-300 border-rose-700/60',
+    borderBg: 'border-rose-600',
+  },
+  estilo: {
+    id: 'estilo',
+    name: 'Elegancia Siniestra',
+    symbol: '🦇',
+    color: '#7c3aed',
+    badgeBg: 'bg-purple-950/80 text-purple-300 border-purple-700/60',
+    borderBg: 'border-purple-600',
+  },
+  aventura: {
+    id: 'aventura',
+    name: 'Acecho',
+    symbol: '🕯️',
+    color: '#ca8a04',
+    badgeBg: 'bg-amber-950/80 text-amber-300 border-amber-700/60',
+    borderBg: 'border-amber-600',
+  },
+  desafio: {
+    id: 'desafio',
+    name: 'Dominio',
+    symbol: '⛓️',
+    color: '#4338ca',
+    badgeBg: 'bg-indigo-950/80 text-indigo-300 border-indigo-700/60',
+    borderBg: 'border-indigo-600',
+  },
+  rutina: {
+    id: 'rutina',
+    name: 'Caos Doméstico',
+    symbol: '🥀',
+    color: '#be123c',
+    badgeBg: 'bg-pink-950/80 text-pink-300 border-pink-700/60',
+    borderBg: 'border-pink-600',
+  },
+  leyenda: {
+    id: 'leyenda',
+    name: 'Apocalipsis',
+    symbol: '😈',
+    color: '#991b1b',
+    badgeBg: 'bg-red-950/90 text-rose-300 border-red-600',
+    borderBg: 'border-red-500',
+  },
+};
+
+/**
+ * Elementos por defecto (compatibilidad total con GoodTokkii)
+ */
+export const ELEMENT_CONFIGS: Record<CardElement, ElementConfig> = DEFAULT_GOOD_ELEMENT_CONFIGS;
+
+export const getElementConfigsForEdition = (edition: CardEdition): Record<CardElement, ElementConfig> => {
+  return edition === 'eviltokkii' ? DEFAULT_EVIL_ELEMENT_CONFIGS : DEFAULT_GOOD_ELEMENT_CONFIGS;
 };

@@ -1,3 +1,5 @@
+export type CardEdition = 'goodtokkii' | 'eviltokkii';
+
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'super_rare' | 'ultra_rare' | 'secret_rare';
 
 export type CardElement =
@@ -56,6 +58,7 @@ export interface CardData {
   customMaskOpacity?: number; // 0 to 1
   dateAdded?: string;
   tags: string[];
+  edition?: CardEdition;
 }
 
 export interface PackSizeRule {

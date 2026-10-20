@@ -90,17 +90,19 @@ export const uploadImageToR2 = async (
 
 /**
  * Uploads a pre-rendered card PNG to Cloudflare R2 with a deterministic filename based on cardNumber.
+ * Supports specifying the target folder (e.g. 'cartas_renderizadas' for GoodTokkii or 'cartas_renderizadas_EvilTokkii' for EvilTokkii).
  * This ensures updating a card cleanly overwrites the previous rendered image without duplicate files.
  */
 export const uploadRenderedCardToR2 = async (
   cardNumber: string,
   dataUrl: string,
-  config: R2Config = getR2Config()
+  config: R2Config = getR2Config(),
+  folderName: string = 'cartas_renderizadas'
 ): Promise<string> => {
   const s3 = createR2Client(config);
   const cleanDigits = String(cardNumber || '1').replace(/\D/g, '') || '1';
   const numStr = cleanDigits.padStart(3, '0');
-  const uniqueKey = `cartas_renderizadas/carta_${numStr}.png`;
+  const uniqueKey = `${folderName}/carta_${numStr}.png`;
 
   // Convert base64 dataUrl directly to Uint8Array safely without network fetch
   const base64Index = dataUrl.indexOf(',');

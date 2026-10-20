@@ -1,8 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import type { CardData, BoosterPackConfig } from './types/card';
+import type { CardData, BoosterPackConfig, CardEdition, Rarity, RarityConfig } from './types/card';
 import { DEFAULT_CARDS, DEFAULT_PACK_CONFIG } from './data/defaultData';
+import { DEFAULT_EVIL_CARDS } from './data/defaultEvilCards';
 import { Header, type BuilderViewMode } from './components/Header';
 import { CardCollectionView } from './components/CardCollectionView';
+import { EditionSelectionView } from './components/EditionSelectionView';
+import { RarityConfigModal } from './components/RarityConfigModal';
+import {
+  getRarityConfigsForEdition,
+  saveRarityConfigsForEdition,
+  resetRarityConfigsForEdition,
+  getElementConfigsForEdition,
+} from './data/configs';
 import { CardCanvas, type CardCanvasHandle } from './components/CardCanvas';
 import { CardEditorPanel } from './components/CardEditorPanel';
 import { PackCanvas } from './components/PackCanvas';
@@ -20,6 +29,8 @@ import {
 } from './services/adminAuthService';
 import {
   Sparkles,
+  Flame,
+  Palette,
   Check,
   ArrowLeft,
   ChevronLeft,
@@ -34,7 +45,7 @@ import {
   supabase,
   rowToCard
 } from './utils/supabaseClient';
-import { saveCardsToIndexedDb } from './utils/cardStorage';
+import { saveCardsToIndexedDb, loadCardsFromIndexedDb } from './utils/cardStorage';
 
 export function App() {
   // Admin Authentication State
@@ -63,23 +74,178 @@ export function App() {
     setCurrentAdmin(null);
   };
 
-  // Load Cards directamente sin caché local
-  const [cards, setCards] = useState<CardData[]>(() => {
+  // Active Edition State ('goodtokkii' vs 'eviltokkii')
+  const [currentEdition, setCurrentEdition] = useState<CardEdition>(() => {
+    try {
+      const saved = localStorage.getItem('tokkii_builder_current_edition');
+      if (saved === 'goodtokkii' || saved === 'eviltokkii') return saved;
+    } catch {}
+    return 'goodtokkii';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tokkii_builder_current_edition', currentEdition);
+    } catch {}
+  }, [currentEdition]);
+
+  // Rarity Configs State (Independiente por edición)
+  const [rarityConfigs, setRarityConfigs] = useState<Record<Rarity, RarityConfig>>(() => {
+    return getRarityConfigsForEdition(currentEdition);
+  });
+  const [isRarityModalOpen, setIsRarityModalOpen] = useState(false);
+
+  // Element Configs (Independiente por edición: GoodTokkii vs EvilTokkii)
+  const elementConfigs = getElementConfigsForEdition(currentEdition);
+
+  useEffect(() => {
+    setRarityConfigs(getRarityConfigsForEdition(currentEdition));
+  }, [currentEdition]);
+
+  const handleSaveRarityConfigs = (updated: Record<Rarity, RarityConfig>) => {
+    setRarityConfigs(updated);
+    saveRarityConfigsForEdition(currentEdition, updated);
+  };
+
+  const handleResetRarityConfigs = () => {
+    const defaults = resetRarityConfigsForEdition(currentEdition);
+    setRarityConfigs(defaults);
+  };
+
+  // GoodTokkii Cards State
+  const [goodCards, setGoodCards] = useState<CardData[]>(() => {
     try {
       localStorage.removeItem('tokkii_builder_cards');
     } catch {}
     return DEFAULT_CARDS;
   });
 
+  // EvilTokkii Cards State (140 cartas con descripciones oficiales de EvilTokkii)
+  const [evilCards, setEvilCards] = useState<CardData[]>(() => {
+    return DEFAULT_EVIL_CARDS;
+  });
+
+  // Helper para combinar cartas existentes/editadas con las 140 cartas base de EvilTokkii
+  const mergeEvilWithDefaults = (cardsToMerge: CardData[]): CardData[] => {
+    const mergedMap = new Map<string, CardData>();
+    DEFAULT_EVIL_CARDS.forEach((c) => mergedMap.set(c.id, c));
+    cardsToMerge.forEach((c) => mergedMap.set(c.id, c));
+    const result: CardData[] = [];
+    DEFAULT_EVIL_CARDS.forEach((c) => {
+      result.push(mergedMap.get(c.id) || c);
+      mergedMap.delete(c.id);
+    });
+    mergedMap.forEach((c) => result.push(c));
+    return result;
+  };
+
+  // Carga cartas de EvilTokkii: primero desde la tabla dedicada 'evil_cards' de Supabase; si no existe aún, desde IndexedDB
+  useEffect(() => {
+    const loadEvil = async () => {
+      try {
+        const remoteEvil = await fetchCardsFromSupabase(true, 'evil_cards');
+        if (remoteEvil && remoteEvil.length > 0) {
+          const merged = mergeEvilWithDefaults(remoteEvil);
+          setEvilCards(merged);
+          saveCardsToIndexedDb(merged, 'builder_cards_eviltokkii');
+          return;
+        }
+      } catch (err) {
+        console.warn('Tabla evil_cards en Supabase aún no creada o sin datos, usando copia local:', err);
+      }
+
+      try {
+        const savedEvil = await loadCardsFromIndexedDb('builder_cards_eviltokkii');
+        if (savedEvil && savedEvil.length > 0) {
+          // Si el cache local tiene los nombres viejos placeholder o repetidos, actualizar a DEFAULT_EVIL_CARDS oficiales
+          const hasOldPlaceholder = savedEvil.some(
+            (c) =>
+              c.title?.startsWith('[EVIL]') ||
+              c.title?.startsWith('Evil Tokkii #') ||
+              (c.id === 'evil-tokkii-071' && c.title === 'CLIP INFERNAL')
+          );
+          if (hasOldPlaceholder) {
+            setEvilCards(DEFAULT_EVIL_CARDS);
+            saveCardsToIndexedDb(DEFAULT_EVIL_CARDS, 'builder_cards_eviltokkii');
+          } else {
+            const merged = mergeEvilWithDefaults(savedEvil);
+            setEvilCards(merged);
+            saveCardsToIndexedDb(merged, 'builder_cards_eviltokkii');
+          }
+        } else {
+          setEvilCards(DEFAULT_EVIL_CARDS);
+          saveCardsToIndexedDb(DEFAULT_EVIL_CARDS, 'builder_cards_eviltokkii');
+        }
+      } catch (err) {
+        console.warn('Could not load EvilTokkii cards from IndexedDB:', err);
+      }
+    };
+    loadEvil();
+
+    const evilChannel = supabase
+      .channel('builder_evil_cards_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'evil_cards' },
+        (payload) => {
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const updatedCard = rowToCard(payload.new as any);
+            setEvilCards((prev) => {
+              const existingIdx = prev.findIndex((c) => c.id === updatedCard.id);
+              let next: CardData[];
+              if (existingIdx >= 0) {
+                next = [...prev];
+                next[existingIdx] = updatedCard;
+              } else {
+                next = [...prev, updatedCard];
+              }
+              saveCardsToIndexedDb(next, 'builder_cards_eviltokkii');
+              return next;
+            });
+          } else if (payload.eventType === 'DELETE') {
+            setEvilCards((prev) => {
+              const next = prev.filter((c) => c.id !== payload.old.id);
+              saveCardsToIndexedDb(next, 'builder_cards_eviltokkii');
+              return next;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(evilChannel);
+    };
+  }, []);
+
+  // Set activo según la edición seleccionada
+  const cards = currentEdition === 'eviltokkii' ? evilCards : goodCards;
+
+  const setCards = (updater: CardData[] | ((prev: CardData[]) => CardData[])) => {
+    if (currentEdition === 'eviltokkii') {
+      setEvilCards((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater;
+        saveCardsToIndexedDb(next, 'builder_cards_eviltokkii');
+        return next;
+      });
+    } else {
+      setGoodCards((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater;
+        saveCardsToIndexedDb(next, 'builder_cards');
+        return next;
+      });
+    }
+  };
+
   const [isSyncingSupabase, setIsSyncingSupabase] = useState(false);
 
-  // Auto load from Supabase on mount & Realtime sync
+  // Auto load GoodTokkii from Supabase on mount & Realtime sync (NO toca EvilTokkii)
   useEffect(() => {
     const loadFromSupabase = async () => {
       try {
         const supabaseCards = await fetchCardsFromSupabase(true);
         if (supabaseCards && supabaseCards.length > 0) {
-          setCards((currentCards) => {
+          setGoodCards((currentCards) => {
             const currentMap = new Map(currentCards.map((c) => [c.id, c]));
             const defMap = new Map(DEFAULT_CARDS.map((c) => [c.id, c]));
 
@@ -88,13 +254,11 @@ export function App() {
               const localCard = currentMap.get(sbCard.id);
               const defCard = defMap.get(sbCard.id);
 
-              // Use local or default emojis if Supabase card attacks lack emojis
               let attacks = sbCard.attacks;
               if (defCard?.attacks && (!attacks || attacks.length === 0 || !attacks[0]?.name?.includes(' '))) {
                 attacks = defCard.attacks;
               }
 
-              // If local card or default data has a custom image and Supabase has default, retain custom image
               const localHasCustomImg = localCard?.image && !localCard.image.includes('tokkii_photographer.jpg');
               const defHasCustomImg = defCard?.image && !defCard.image.includes('tokkii_photographer.jpg');
               const sbHasDefaultImg = !sbCard.image || sbCard.image.includes('tokkii_photographer.jpg');
@@ -129,7 +293,7 @@ export function App() {
             const sbIdSet = new Set(supabaseCards.map((c) => c.id));
             const localOnlyCards = currentCards.filter((c) => !sbIdSet.has(c.id));
             const fullList = [...merged, ...localOnlyCards];
-            saveCardsToIndexedDb(fullList);
+            saveCardsToIndexedDb(fullList, 'builder_cards');
             return fullList;
           });
         }
@@ -147,23 +311,22 @@ export function App() {
         (payload) => {
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             const updatedCard = rowToCard(payload.new as any);
-            setCards((prev) => {
+            setGoodCards((prev) => {
               const existingIdx = prev.findIndex((c) => c.id === updatedCard.id);
               let next: CardData[];
               if (existingIdx >= 0) {
-                // If local has active unsynced base64 and update doesn't override with a custom URL, keep base64
                 next = [...prev];
                 next[existingIdx] = updatedCard;
               } else {
                 next = [...prev, updatedCard];
               }
-              saveCardsToIndexedDb(next);
+              saveCardsToIndexedDb(next, 'builder_cards');
               return next;
             });
           } else if (payload.eventType === 'DELETE') {
-            setCards((prev) => {
+            setGoodCards((prev) => {
               const next = prev.filter((c) => c.id !== payload.old.id);
-              saveCardsToIndexedDb(next);
+              saveCardsToIndexedDb(next, 'builder_cards');
               return next;
             });
           }
@@ -238,14 +401,20 @@ const getInitialBuilderView = (): BuilderViewMode => {
   // Active view: card_builder vs pack_builder vs pack_management vs gift_cards
   const [currentView, setCurrentView] = useState<BuilderViewMode>(getInitialBuilderView);
   
-  // Card studio mode: 'collection' (4-column grid) vs 'editor' (3D viewer + adjustment panel)
-  const [cardStudioMode, setCardStudioMode] = useState<'collection' | 'editor'>(() => {
+  // Card studio mode: 'select_edition' (pantalla con las 2 versiones) vs 'collection' (visor en cuadrícula) vs 'editor' (3D + panel)
+  const [cardStudioMode, setCardStudioMode] = useState<'collection' | 'editor' | 'select_edition'>(() => {
     try {
       const savedMode = localStorage.getItem('tokkii_builder_card_studio_mode');
-      if (savedMode === 'editor' || savedMode === 'collection') return savedMode;
+      if (savedMode === 'editor' || savedMode === 'collection' || savedMode === 'select_edition') return savedMode;
     } catch {}
-    return 'collection';
+    return 'select_edition';
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tokkii_builder_card_studio_mode', cardStudioMode);
+    } catch {}
+  }, [cardStudioMode]);
 
   const [editorCardScale, setEditorCardScale] = useState<number>(() => {
     if (typeof window === 'undefined') return 1.18;
@@ -327,67 +496,68 @@ const getInitialBuilderView = (): BuilderViewMode => {
 
   // Card update handler
   const handleCardChange = (updated: CardData) => {
-    setCards((prev) => {
-      const next = prev.map((c) => (c.id === updated.id ? updated : c));
-      saveCardsToIndexedDb(next);
-      return next;
-    });
+    setCards((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
 
-    // Auto-sync updated card with Supabase
-    saveCardToSupabase(updated).catch((err) => {
-      console.warn('Auto-sync to Supabase pending:', err);
+    // Auto-sync con la tabla correspondiente en Supabase ('evil_cards' para EvilTokkii, 'cards' para GoodTokkii)
+    const targetTable = currentEdition === 'eviltokkii' ? 'evil_cards' : 'cards';
+    saveCardToSupabase(updated, targetTable).catch((err) => {
+      console.warn(`Auto-sync to Supabase (${targetTable}) pending:`, err);
     });
   };
 
   // Add New Card
   const handleAddNewCard = () => {
     const newCardNumber = String(cards.length + 1).padStart(3, '0');
+    const isEvil = currentEdition === 'eviltokkii';
     const newCard: CardData = {
-      id: `tokkii-${Date.now()}`,
-      title: `Tokkii - Nueva Carta #${newCardNumber}`,
-      subtitle: 'Neko Aventurera • Colección TCG',
+      id: isEvil ? `evil-tokkii-${Date.now()}` : `tokkii-${Date.now()}`,
+      title: isEvil ? `EvilTokkii - Nueva Carta #${newCardNumber}` : `Tokkii - Nueva Carta #${newCardNumber}`,
+      subtitle: isEvil ? 'Edición Sombra • EvilTokkii' : 'Neko Aventurera • Colección TCG',
       image: '/cards/tokkii_photographer.jpg',
       imageZoom: 1,
       imageOffsetX: 0,
       imageOffsetY: 0,
       rarity: 'rare',
-      element: 'impulso',
+      element: isEvil ? 'desafio' : 'impulso',
       hp: 120,
       cardNumber: newCardNumber,
-      totalInSet: '050',
+      totalInSet: '140',
       artist: 'Tokkii Studio',
-      flavorText: 'Una nueva carta creada y lista para la batalla o colección.',
+      flavorText: isEvil ? 'Una nueva carta sombría lista para la batalla.' : 'Una nueva carta creada y lista para la batalla o colección.',
       attacks: [
         {
           id: `atk-${Date.now()}`,
-          name: 'Impacto de Impulso',
-          cost: ['impulso', 'rutina'],
+          name: isEvil ? 'Corte Sombrío' : 'Impacto de Impulso',
+          cost: isEvil ? ['desafio', 'aura'] : ['impulso', 'rutina'],
           damage: '60',
           description: 'Inflige 60 puntos de daño al objetivo.',
         },
       ],
       retreatCost: 1,
-      weakness: 'aventura',
-      resistance: 'arte',
+      weakness: isEvil ? 'arte' : 'aventura',
+      resistance: isEvil ? 'impulso' : 'arte',
       isFullArt: false,
       dateAdded: new Date().toISOString().split('T')[0],
-      tags: ['Tokkii', 'Nueva'],
+      tags: isEvil ? ['EvilTokkii', 'Nueva'] : ['Tokkii', 'Nueva'],
+      edition: currentEdition,
     };
 
     setCards([newCard, ...cards]);
     setSelectedCardId(newCard.id);
-    showToast('¡Nueva carta agregada con éxito!');
+    showToast(`¡Nueva carta agregada a ${isEvil ? 'EvilTokkii' : 'GoodTokkii'}!`);
   };
 
   // Duplicate Card
   const handleDuplicateCard = (id: string) => {
     const target = cards.find((c) => c.id === id);
     if (!target) return;
+    const isEvil = currentEdition === 'eviltokkii';
     const duplicated: CardData = {
       ...target,
-      id: `tokkii-dup-${Date.now()}`,
+      id: isEvil ? `evil-dup-${Date.now()}` : `tokkii-dup-${Date.now()}`,
       title: `${target.title} (Copia)`,
       cardNumber: String(cards.length + 1).padStart(3, '0'),
+      edition: currentEdition,
     };
     setCards([duplicated, ...cards]);
     setSelectedCardId(duplicated.id);
@@ -418,14 +588,15 @@ const getInitialBuilderView = (): BuilderViewMode => {
 
   // Export JSON
   const handleExportJson = () => {
+    const filenamePrefix = currentEdition === 'eviltokkii' ? 'tokkii_eviltokkii_deck' : 'tokkii_goodtokkii_deck';
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(cards, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `tokkii_tcg_deck_${Date.now()}.json`);
+    downloadAnchor.setAttribute('download', `${filenamePrefix}_${Date.now()}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-    showToast('Colección exportada en JSON');
+    showToast(`Colección ${currentEdition === 'eviltokkii' ? 'EvilTokkii' : 'GoodTokkii'} exportada en JSON`);
   };
 
   // Import JSON
@@ -439,7 +610,7 @@ const getInitialBuilderView = (): BuilderViewMode => {
           if (Array.isArray(imported) && imported.length > 0) {
             setCards(imported);
             setSelectedCardId(imported[0].id);
-            showToast(`¡Se importaron ${imported.length} cartas correctamente!`);
+            showToast(`¡Se importaron ${imported.length} cartas a ${currentEdition === 'eviltokkii' ? 'EvilTokkii' : 'GoodTokkii'} correctamente!`);
           }
         } catch {
           alert('El archivo JSON no tiene un formato válido.');
@@ -449,15 +620,16 @@ const getInitialBuilderView = (): BuilderViewMode => {
     }
   };
 
-  // Sync to Supabase
+  // Sync to Supabase ('cards' para GoodTokkii, 'evil_cards' para EvilTokkii)
   const handleSyncSupabase = async () => {
+    const targetTable = currentEdition === 'eviltokkii' ? 'evil_cards' : 'cards';
     try {
       setIsSyncingSupabase(true);
-      await syncAllCardsToSupabase(cards);
-      showToast('✨ ¡Todas las cartas han sido respaldadas en Supabase!');
+      await syncAllCardsToSupabase(cards, targetTable);
+      showToast(`✨ ¡Todas las cartas de ${currentEdition === 'eviltokkii' ? 'EvilTokkii' : 'GoodTokkii'} respaldadas en Supabase (${targetTable})!`);
     } catch (err: any) {
-      console.error('Error syncing with Supabase:', err);
-      showToast(`❌ Error al conectar con Supabase: ${err?.message || 'Revisa tu tabla sql'}`);
+      console.error(`Error syncing with Supabase (${targetTable}):`, err);
+      showToast(`❌ Error al conectar con tabla ${targetTable}: ${err?.message || 'Crea la tabla en Supabase'}`);
     } finally {
       setIsSyncingSupabase(false);
     }
@@ -466,11 +638,12 @@ const getInitialBuilderView = (): BuilderViewMode => {
   // Generate & Download SQL backup
   const handleExportSql = () => {
     const escapeSql = (str: string) => str.replace(/'/g, "''");
+    const targetTable = currentEdition === 'eviltokkii' ? 'evil_cards' : 'cards';
     
-    let sql = `-- Backup de Cartas Tokkii TCG - Generado el ${new Date().toLocaleString()}\n`;
+    let sql = `-- Backup de Cartas Tokkii TCG (${currentEdition === 'eviltokkii' ? 'EvilTokkii' : 'GoodTokkii'}) - Generado el ${new Date().toLocaleString()}\n`;
     sql += `-- Compatible con Supabase / PostgreSQL\n\n`;
     
-    sql += `INSERT INTO public.cards (
+    sql += `INSERT INTO public.${targetTable} (
     id, title, subtitle, image, image_zoom, image_offset_x, image_offset_y, image_rotation, image_fit,
     rarity, element, hp, card_number, total_in_set, artist, flavor_text, attacks, retreat_cost, weakness, resistance, is_full_art, tags
 ) VALUES \n`;
@@ -534,21 +707,27 @@ const getInitialBuilderView = (): BuilderViewMode => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `tokkii_cards_backup_${Date.now()}.sql`;
+    link.download = currentEdition === 'eviltokkii'
+      ? `tokkii_eviltokkii_cards_backup_${Date.now()}.sql`
+      : `tokkii_goodtokkii_cards_backup_${Date.now()}.sql`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    showToast('Archivo SQL generado y descargado');
+    showToast(`Archivo SQL de ${currentEdition === 'eviltokkii' ? 'EvilTokkii' : 'GoodTokkii'} generado y descargado`);
   };
 
   // Reset Defaults
   const handleResetDefaults = () => {
-    if (confirm('¿Restablecer todas las cartas y configuraciones a los valores iniciales?')) {
-      setCards(DEFAULT_CARDS);
+    if (confirm(`¿Restablecer la edición ${currentEdition === 'eviltokkii' ? 'EvilTokkii' : 'GoodTokkii'} a los valores iniciales?`)) {
+      if (currentEdition === 'eviltokkii') {
+        setCards(DEFAULT_EVIL_CARDS);
+        setSelectedCardId(DEFAULT_EVIL_CARDS[0]?.id || 'evil-tokkii-001');
+      } else {
+        setCards(DEFAULT_CARDS);
+        setSelectedCardId(DEFAULT_CARDS[0].id);
+      }
       setPackConfig(DEFAULT_PACK_CONFIG);
-      setSelectedCardId(DEFAULT_CARDS[0].id);
-      localStorage.removeItem('tokkii_builder_cards');
       localStorage.removeItem('tokkii_builder_pack');
       showToast('Valores restaurados por defecto');
     }
@@ -576,14 +755,16 @@ const getInitialBuilderView = (): BuilderViewMode => {
         currentView={currentView}
         onViewChange={(view) => {
           setCurrentView(view);
-          if (view === 'card_builder') {
-            // Keep collection as base overview
-          }
         }}
         onResetDefaults={handleResetDefaults}
         cardCount={cards.length}
         adminEmail={currentAdmin.email}
         onLogout={handleAdminLogout}
+        currentEdition={currentEdition}
+        onOpenEditionPicker={() => {
+          setCurrentView('card_builder');
+          setCardStudioMode('select_edition');
+        }}
       />
 
       {/* Main Studio Area */}
@@ -591,10 +772,27 @@ const getInitialBuilderView = (): BuilderViewMode => {
         {/* VIEW 1: CARD STUDIO */}
         {currentView === 'card_builder' && (
           <div>
+            {/* MODE 0: SELECCIÓN DE EDICIÓN (VISTA CON LAS 2 VERSIONES) */}
+            {cardStudioMode === 'select_edition' && (
+              <EditionSelectionView
+                currentEdition={currentEdition}
+                goodCardCount={goodCards.length}
+                evilCardCount={evilCards.length}
+                onSelectEdition={(edition) => {
+                  setCurrentEdition(edition);
+                  const targetList = edition === 'eviltokkii' ? evilCards : goodCards;
+                  setSelectedCardId(targetList[0]?.id || (edition === 'eviltokkii' ? 'evil-tokkii-001' : 'tokkii-001'));
+                  setCardStudioMode('collection');
+                }}
+              />
+            )}
+
             {/* MODE A: 4-COLUMN HORIZONTAL CARD COLLECTION VIEWER */}
             {cardStudioMode === 'collection' && (
               <CardCollectionView
                 cards={cards}
+                currentEdition={currentEdition}
+                onOpenEditionPicker={() => setCardStudioMode('select_edition')}
                 onSelectAndEditCard={(id) => {
                   setSelectedCardId(id);
                   setCardStudioMode('editor');
@@ -611,6 +809,9 @@ const getInitialBuilderView = (): BuilderViewMode => {
                 onExportSql={handleExportSql}
                 onOpenBatchImageExport={() => setIsBatchImageModalOpen(true)}
                 isSyncingSupabase={isSyncingSupabase}
+                rarityConfigs={rarityConfigs}
+                elementConfigs={elementConfigs}
+                onOpenRarityModal={() => setIsRarityModalOpen(true)}
               />
             )}
 
@@ -619,14 +820,43 @@ const getInitialBuilderView = (): BuilderViewMode => {
               <div className="space-y-4 animate-in fade-in duration-200">
                 {/* Editor Navigation Bar */}
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 backdrop-blur-md">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
                     <button
                       type="button"
                       onClick={() => setCardStudioMode('collection')}
                       className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-amber-400 border border-slate-700 hover:border-amber-400 transition-all cursor-pointer shadow"
                     >
                       <ArrowLeft className="w-4 h-4" />
-                      <span>Volver a la Colección (Visor)</span>
+                      <span>Volver al Visor</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCardStudioMode('select_edition')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer shadow ${
+                        currentEdition === 'eviltokkii'
+                          ? 'bg-rose-950/80 border-rose-500/50 text-rose-300 hover:bg-rose-900/80 shadow-[0_0_12px_rgba(244,63,94,0.25)]'
+                          : 'bg-amber-950/60 border-amber-500/50 text-amber-300 hover:bg-amber-900/60 shadow-[0_0_12px_rgba(234,179,8,0.2)]'
+                      }`}
+                      title="Cambiar entre Edición GoodTokkii y EvilTokkii"
+                    >
+                      {currentEdition === 'eviltokkii' ? (
+                        <Flame className="w-3.5 h-3.5 text-rose-400" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      )}
+                      <span>{currentEdition === 'eviltokkii' ? 'EvilTokkii' : 'GoodTokkii'}</span>
+                      <span className="text-[9px] opacity-70">▼</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsRarityModalOpen(true)}
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-amber-300 hover:text-white transition-colors cursor-pointer shadow"
+                      title="Configurar paletas y nombres de rarezas de esta edición"
+                    >
+                      <Palette className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Paletas de Rarezas</span>
                     </button>
 
                     <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-800">
@@ -690,8 +920,12 @@ const getInitialBuilderView = (): BuilderViewMode => {
                   {/* PANEL 1: Interactive 3D Card Canvas Preview */}
                   <div className="w-full lg:w-[420px] xl:w-[450px] shrink-0 flex flex-col items-center justify-center p-3 sm:p-5 bg-slate-900/40 border border-slate-800 rounded-3xl backdrop-blur-md shadow-2xl relative min-h-[440px] sm:min-h-[560px] lg:min-h-[640px]">
                     <div className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      Renderizador en Tiempo Real 3D
+                      {currentEdition === 'eviltokkii' ? (
+                        <Flame className="w-3.5 h-3.5 text-rose-400" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      )}
+                      <span>Renderizador 3D ({currentEdition === 'eviltokkii' ? 'EvilTokkii' : 'GoodTokkii'})</span>
                     </div>
 
                     {currentCard ? (
@@ -700,16 +934,26 @@ const getInitialBuilderView = (): BuilderViewMode => {
                         card={currentCard}
                         scale={editorCardScale}
                         interactive={true}
+                        r2Folder={currentEdition === 'eviltokkii' ? 'cartas_renderizadas_EvilTokkii' : 'cartas_renderizadas'}
+                        rarityConfigs={rarityConfigs}
+                        elementConfigs={elementConfigs}
                         onExportSuccess={() => showToast('¡Imagen PNG generada y descargada!')}
                         onSaveCard={async (savedCard) => {
-                          setCards((prev) => {
-                            const next = prev.map((c) => (c.id === savedCard.id ? savedCard : c));
-                            saveCardsToIndexedDb(next);
-                            return next;
-                          });
-                          await saveCardToSupabase(savedCard);
+                          setCards((prev) => prev.map((c) => (c.id === savedCard.id ? savedCard : c)));
+                          const targetTable = currentEdition === 'eviltokkii' ? 'evil_cards' : 'cards';
+                          try {
+                            await saveCardToSupabase(savedCard, targetTable);
+                          } catch (err) {
+                            console.warn(`Could not save card to Supabase table ${targetTable}:`, err);
+                          }
                         }}
-                        onSaveSuccess={() => showToast(`¡Carta #${currentCard.cardNumber} guardada y subida a R2!`)}
+                        onSaveSuccess={() => {
+                          showToast(
+                            currentEdition === 'eviltokkii'
+                              ? `¡Carta #${currentCard.cardNumber} guardada y subida a R2 (cartas_renderizadas_EvilTokkii)!`
+                              : `¡Carta #${currentCard.cardNumber} guardada y subida a R2!`
+                          );
+                        }}
                         onSaveError={(err) => showToast(`Error al guardar en R2: ${err}`)}
                       />
                     ) : (
@@ -723,7 +967,12 @@ const getInitialBuilderView = (): BuilderViewMode => {
                       <CardEditorPanel
                         card={currentCard}
                         onChange={handleCardChange}
-                        onSaveToSupabase={saveCardToSupabase}
+                        rarityConfigs={rarityConfigs}
+                        elementConfigs={elementConfigs}
+                        onSaveToSupabase={async (c) => {
+                          const targetTable = currentEdition === 'eviltokkii' ? 'evil_cards' : 'cards';
+                          await saveCardToSupabase(c, targetTable);
+                        }}
                         onSaveToR2={async () => {
                           await cardCanvasRef.current?.saveToR2();
                         }}
@@ -788,10 +1037,24 @@ const getInitialBuilderView = (): BuilderViewMode => {
         isOpen={isBatchImageModalOpen}
         onClose={() => setIsBatchImageModalOpen(false)}
         cards={cards}
+        r2Folder={currentEdition === 'eviltokkii' ? 'cartas_renderizadas_EvilTokkii' : 'cartas_renderizadas'}
+        edition={currentEdition}
+        rarityConfigs={rarityConfigs}
+        elementConfigs={elementConfigs}
         onSaveCardSuccess={(updatedList) => {
           setCards(updatedList);
-          saveCardsToIndexedDb(updatedList);
         }}
+        onShowToast={showToast}
+      />
+
+      {/* Rarity Config Modal (Paletas y nombres independientes por edición) */}
+      <RarityConfigModal
+        isOpen={isRarityModalOpen}
+        onClose={() => setIsRarityModalOpen(false)}
+        edition={currentEdition}
+        configs={rarityConfigs}
+        onSave={handleSaveRarityConfigs}
+        onReset={handleResetRarityConfigs}
         onShowToast={showToast}
       />
 

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import type { CardEdition } from '../types/card';
 import {
   Sparkles,
+  Flame,
   Layers,
   Package,
   RotateCcw,
@@ -24,6 +26,8 @@ interface HeaderProps {
   cardCount: number;
   adminEmail?: string;
   onLogout?: () => void;
+  currentEdition?: CardEdition;
+  onOpenEditionPicker?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -33,6 +37,8 @@ export const Header: React.FC<HeaderProps> = ({
   cardCount,
   adminEmail,
   onLogout,
+  currentEdition = 'goodtokkii',
+  onOpenEditionPicker,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -68,6 +74,28 @@ export const Header: React.FC<HeaderProps> = ({
                 Editor TCG & Sobres
               </p>
             </div>
+
+            {/* Edition Indicator / Switcher Pill */}
+            {onOpenEditionPicker && (
+              <button
+                type="button"
+                onClick={onOpenEditionPicker}
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow ${
+                  currentEdition === 'eviltokkii'
+                    ? 'bg-rose-950/80 border-rose-500/50 text-rose-300 hover:bg-rose-900/80 shadow-[0_0_12px_rgba(244,63,94,0.25)]'
+                    : 'bg-amber-950/60 border-amber-500/50 text-amber-300 hover:bg-amber-900/60 shadow-[0_0_12px_rgba(234,179,8,0.2)]'
+                }`}
+                title="Haz clic para cambiar entre Edición GoodTokkii y EvilTokkii"
+              >
+                {currentEdition === 'eviltokkii' ? (
+                  <Flame className="w-3.5 h-3.5 text-rose-400" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                )}
+                <span>{currentEdition === 'eviltokkii' ? 'EvilTokkii' : 'GoodTokkii'}</span>
+                <span className="text-[9px] opacity-70 ml-0.5">▼</span>
+              </button>
+            )}
           </div>
 
           {/* View Switch Tabs (Desktop: visible on lg and above - UNTOUCHED FOR PC) */}
@@ -219,6 +247,43 @@ export const Header: React.FC<HeaderProps> = ({
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Edition Switcher Pill in Mobile Drawer */}
+          {onOpenEditionPicker && (
+            <div className={`p-3.5 rounded-2xl border flex items-center justify-between ${
+              currentEdition === 'eviltokkii'
+                ? 'bg-rose-950/60 border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.15)]'
+                : 'bg-amber-950/40 border-amber-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)]'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                  currentEdition === 'eviltokkii' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'
+                }`}>
+                  {currentEdition === 'eviltokkii' ? <Flame className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Edición Activa</p>
+                  <p className="text-xs font-black text-white">
+                    {currentEdition === 'eviltokkii' ? 'EvilTokkii (Sombra)' : 'GoodTokkii (Génesis)'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onOpenEditionPicker();
+                }}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-colors ${
+                  currentEdition === 'eviltokkii'
+                    ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400'
+                    : 'bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-400'
+                }`}
+              >
+                Cambiar
+              </button>
+            </div>
+          )}
 
           {/* Section List (Pestañas disponibles) */}
           <div className="space-y-2">

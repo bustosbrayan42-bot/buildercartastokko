@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
-import type { CardData, HoloStyle } from '../types/card';
-import { RARITY_CONFIGS, ELEMENT_CONFIGS } from '../data/configs';
+import type { CardData, HoloStyle, Rarity, RarityConfig, CardElement } from '../types/card';
+import { RARITY_CONFIGS, ELEMENT_CONFIGS, type ElementConfig } from '../data/configs';
 import { playCardFlipSound, playCardHoverSound, playSparkleSound } from '../utils/soundEffects';
 import { resolveImageUrl } from '../utils/imageHelper';
 import { RotateCw, Download, CloudUpload, Loader2, CheckCircle2 } from 'lucide-react';
@@ -22,6 +22,9 @@ interface CardCanvasProps {
   onSaveCard?: (card: CardData, renderedUrl: string) => Promise<void> | void;
   onSaveSuccess?: (url: string) => void;
   onSaveError?: (msg: string) => void;
+  r2Folder?: string;
+  rarityConfigs?: Record<Rarity, RarityConfig>;
+  elementConfigs?: Record<CardElement, ElementConfig>;
 }
 
 export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
@@ -34,6 +37,9 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
   onSaveCard,
   onSaveSuccess,
   onSaveError,
+  r2Folder = 'cartas_renderizadas',
+  rarityConfigs,
+  elementConfigs,
 }, ref) => {
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -53,8 +59,10 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
     holoAngle: 135,
   });
 
-  const rarityConfig = RARITY_CONFIGS[card.rarity] || RARITY_CONFIGS.common;
-  const elementConfig = ELEMENT_CONFIGS[card.element] || ELEMENT_CONFIGS.impulso;
+  const activeRarityConfigs = rarityConfigs || RARITY_CONFIGS;
+  const rarityConfig = activeRarityConfigs[card.rarity] || activeRarityConfigs.common;
+  const activeElementConfigs = elementConfigs || ELEMENT_CONFIGS;
+  const elementConfig = activeElementConfigs[card.element] || activeElementConfigs.impulso;
 
   const isFullArtMode = card.rarity === 'secret_rare' || card.isFullArt;
 
@@ -69,6 +77,49 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
       : (card.customGlareOpacity !== undefined
       ? card.customGlareOpacity
       : (rarityConfig.defaultGlareOpacity ?? 0.28));
+
+  const isEvilEdition =
+    card.edition === 'eviltokkii' ||
+    Boolean(card.id && card.id.startsWith('evil-')) ||
+    rarityConfig.name === 'Maldita' ||
+    rarityConfig.name === 'Abisal' ||
+    rarityConfig.name === 'Siniestra' ||
+    r2Folder === 'cartas_renderizadas_EvilTokkii';
+
+  const getCardFaceBackground = (): string => {
+    if (isFullArtMode) return '#0f172a';
+
+    if (isEvilEdition) {
+      switch (card.rarity) {
+        case 'uncommon': // Maldita
+          // Tono sutil y elegante violeta oscuro de Maldita
+          return 'linear-gradient(135deg, #2e1065 0%, #1a102e 50%, #090d16 100%)';
+        case 'rare': // Abisal
+          // Mismo diseño oscuro y sutil que Maldita, pero con tono carmesí / abisal profundo
+          return 'linear-gradient(135deg, #4c0519 0%, #240a13 50%, #090d16 100%)';
+        case 'super_rare': // Siniestra
+          // Mismo diseño oscuro y sutil que Maldita (suave, sin el naranja saturado previo), con tono ámbar fuego oscuro
+          return 'linear-gradient(135deg, #431407 0%, #20120b 50%, #090d16 100%)';
+        case 'ultra_rare': // Caótica
+          return 'linear-gradient(135deg, #4a044e 0%, #220826 50%, #090d16 100%)';
+        case 'secret_rare': // Pesadilla Mítica
+          return 'linear-gradient(135deg, #4c0519 0%, #2a0820 50%, #090d16 100%)';
+        default: // Sombra (common)
+          return 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #090d16 100%)';
+      }
+    }
+
+    // GoodTokkii (100% original intacto)
+    return card.rarity === 'ultra_rare'
+      ? 'linear-gradient(135deg, #2e1065 0%, #1e1b4b 50%, #030712 100%)'
+      : card.rarity === 'super_rare'
+      ? 'linear-gradient(135deg, #451a03 0%, #78350f 50%, #1c1917 100%)'
+      : card.rarity === 'rare'
+      ? 'linear-gradient(135deg, #3b0764 0%, #1e1b4b 50%, #090d16 100%)'
+      : card.rarity === 'uncommon'
+      ? 'linear-gradient(135deg, #0c4a6e 0%, #1e293b 50%, #0f172a 100%)'
+      : 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #090d16 100%)';
+  };
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -182,8 +233,8 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
         },
       });
 
-      // 2. Upload to Cloudflare R2: cartas_renderizadas/carta_XXX.png (overwrites cleanly)
-      const publicUrl = await uploadRenderedCardToR2(card.cardNumber, dataUrl);
+      // 2. Upload to Cloudflare R2 into the corresponding edition folder (e.g. cartas_renderizadas vs cartas_renderizadas_EvilTokkii)
+      const publicUrl = await uploadRenderedCardToR2(card.cardNumber, dataUrl, undefined, r2Folder);
 
       // 3. Save to Supabase and update state
       if (onSaveCard) {
@@ -263,17 +314,7 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
             className="card-face absolute inset-0 rounded-[20px] overflow-hidden p-[10px] flex flex-col justify-between border-2"
             style={{
               borderColor: card.borderColor || rarityConfig.borderColor,
-              background: isFullArtMode
-                ? '#0f172a'
-                : card.rarity === 'ultra_rare'
-                ? 'linear-gradient(135deg, #2e1065 0%, #1e1b4b 50%, #030712 100%)'
-                : card.rarity === 'super_rare'
-                ? 'linear-gradient(135deg, #451a03 0%, #78350f 50%, #1c1917 100%)'
-                : card.rarity === 'rare'
-                ? 'linear-gradient(135deg, #3b0764 0%, #1e1b4b 50%, #090d16 100%)'
-                : card.rarity === 'uncommon'
-                ? 'linear-gradient(135deg, #0c4a6e 0%, #1e293b 50%, #0f172a 100%)'
-                : 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #090d16 100%)',
+              background: getCardFaceBackground(),
             }}
           >
             {/* FULL ART BACKGROUND (Only when Full Art mode is active) */}
@@ -384,7 +425,7 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
                                 className="w-3.5 h-3.5 rounded-full bg-slate-900/90 border border-slate-600 flex items-center justify-center text-[8px]"
                                 title={c}
                               >
-                                {ELEMENT_CONFIGS[c]?.symbol || '•'}
+                                {activeElementConfigs[c]?.symbol || '•'}
                               </span>
                             ))}
                             {atk.tag && (
@@ -424,7 +465,7 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
                           Debilidad:{' '}
                           {card.weakness ? (
                             <span className="text-red-400 font-bold">
-                              {ELEMENT_CONFIGS[card.weakness]?.symbol} x2
+                              {activeElementConfigs[card.weakness]?.symbol} x2
                             </span>
                           ) : (
                             '--'
@@ -434,7 +475,7 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
                           Resistencia:{' '}
                           {card.resistance ? (
                             <span className="text-sky-400 font-bold">
-                              {ELEMENT_CONFIGS[card.resistance]?.symbol} -30
+                              {activeElementConfigs[card.resistance]?.symbol} -30
                             </span>
                           ) : (
                             '--'
@@ -507,7 +548,10 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
                   className="relative flex-1 my-1.5 rounded-[12px] overflow-hidden border-2 bg-slate-950 flex items-center justify-center shadow-inner"
                   style={{
                     borderColor:
-                      card.rarity === 'ultra_rare'
+                      card.borderColor ||
+                      (isEvilEdition
+                        ? rarityConfig.borderColor || rarityConfig.color
+                        : card.rarity === 'ultra_rare'
                         ? '#f472b6'
                         : card.rarity === 'super_rare'
                         ? '#facc15'
@@ -515,7 +559,7 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
                         ? '#c084fc'
                         : card.rarity === 'uncommon'
                         ? '#38bdf8'
-                        : '#475569',
+                        : '#475569'),
                   }}
                 >
                   <img
@@ -560,7 +604,7 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
                               className="w-3.5 h-3.5 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-[8px]"
                               title={c}
                             >
-                              {ELEMENT_CONFIGS[c]?.symbol || '•'}
+                              {activeElementConfigs[c]?.symbol || '•'}
                             </span>
                           ))}
                           {atk.tag && (
@@ -600,7 +644,7 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
                         Debilidad:{' '}
                         {card.weakness ? (
                           <span className="text-red-400 font-bold">
-                            {ELEMENT_CONFIGS[card.weakness]?.symbol} x2
+                            {activeElementConfigs[card.weakness]?.symbol} x2
                           </span>
                         ) : (
                           '--'
@@ -610,7 +654,7 @@ export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
                         Resistencia:{' '}
                         {card.resistance ? (
                           <span className="text-sky-400 font-bold">
-                            {ELEMENT_CONFIGS[card.resistance]?.symbol} -30
+                            {activeElementConfigs[card.resistance]?.symbol} -30
                           </span>
                         ) : (
                           '--'

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { CardData, Rarity } from '../types/card';
+import type { CardData, Rarity, RarityConfig } from '../types/card';
 import { RARITY_CONFIGS, ELEMENT_CONFIGS } from '../data/configs';
 import {
   Plus,
@@ -20,6 +20,7 @@ interface CollectionSidebarProps {
   onDeleteCard: (id: string) => void;
   onExportJson: () => void;
   onImportJson: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  rarityConfigs?: Record<Rarity, RarityConfig>;
 }
 
 export const CollectionSidebar: React.FC<CollectionSidebarProps> = ({
@@ -31,7 +32,9 @@ export const CollectionSidebar: React.FC<CollectionSidebarProps> = ({
   onDeleteCard,
   onExportJson,
   onImportJson,
+  rarityConfigs,
 }) => {
+  const activeRarityConfigs = rarityConfigs || RARITY_CONFIGS;
   const [search, setSearch] = useState('');
   const [rarityFilter, setRarityFilter] = useState<Rarity | 'all'>('all');
 
@@ -107,7 +110,7 @@ export const CollectionSidebar: React.FC<CollectionSidebarProps> = ({
             Todas
           </button>
           {rarities.map((r) => {
-            const cfg = RARITY_CONFIGS[r];
+            const cfg = activeRarityConfigs[r] || RARITY_CONFIGS[r];
             const isSel = rarityFilter === r;
             return (
               <button
@@ -129,7 +132,7 @@ export const CollectionSidebar: React.FC<CollectionSidebarProps> = ({
       <div className="flex-1 overflow-y-auto my-3 space-y-2 pr-1">
         {filteredCards.map((card) => {
           const isSelected = card.id === selectedCardId;
-          const rCfg = RARITY_CONFIGS[card.rarity] || RARITY_CONFIGS.common;
+          const rCfg = activeRarityConfigs[card.rarity] || RARITY_CONFIGS[card.rarity] || RARITY_CONFIGS.common;
           const elemCfg = ELEMENT_CONFIGS[card.element] || ELEMENT_CONFIGS.impulso;
 
           return (

@@ -24,28 +24,28 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-export async function saveCardsToIndexedDb(cards: CardData[]): Promise<void> {
+export async function saveCardsToIndexedDb(cards: CardData[], key: string = 'builder_cards'): Promise<void> {
   try {
     const db = await openDb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      const req = store.put(cards, 'builder_cards');
+      const req = store.put(cards, key);
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
     });
   } catch (err) {
-    console.warn('Could not save cards to IndexedDB:', err);
+    console.warn(`Could not save cards to IndexedDB (${key}):`, err);
   }
 }
 
-export async function loadCardsFromIndexedDb(): Promise<CardData[] | null> {
+export async function loadCardsFromIndexedDb(key: string = 'builder_cards'): Promise<CardData[] | null> {
   try {
     const db = await openDb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
-      const req = store.get('builder_cards');
+      const req = store.get(key);
       req.onsuccess = () => {
         if (Array.isArray(req.result) && req.result.length > 0) {
           resolve(req.result);
@@ -56,7 +56,7 @@ export async function loadCardsFromIndexedDb(): Promise<CardData[] | null> {
       req.onerror = () => reject(req.error);
     });
   } catch (err) {
-    console.warn('Could not read cards from IndexedDB:', err);
+    console.warn(`Could not read cards from IndexedDB (${key}):`, err);
     return null;
   }
 }

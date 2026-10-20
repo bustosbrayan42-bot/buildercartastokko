@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import type { CardData } from '../types/card';
+import type { CardData, Rarity, RarityConfig, CardElement } from '../types/card';
+import type { ElementConfig } from '../data/configs';
 import { CardCanvas } from './CardCanvas';
 import { toPng } from 'html-to-image';
 import { uploadRenderedCardToR2, getR2Config } from '../utils/r2Storage';
@@ -23,6 +24,10 @@ interface BatchImageExportModalProps {
   cards: CardData[];
   onSaveCardSuccess?: (updatedCards: CardData[]) => void;
   onShowToast?: (msg: string) => void;
+  r2Folder?: string;
+  edition?: 'goodtokkii' | 'eviltokkii';
+  rarityConfigs?: Record<Rarity, RarityConfig>;
+  elementConfigs?: Record<CardElement, ElementConfig>;
 }
 
 export const BatchImageExportModal: React.FC<BatchImageExportModalProps> = ({
@@ -31,6 +36,10 @@ export const BatchImageExportModal: React.FC<BatchImageExportModalProps> = ({
   cards,
   onSaveCardSuccess,
   onShowToast,
+  r2Folder = 'cartas_renderizadas',
+  edition = 'goodtokkii',
+  rarityConfigs,
+  elementConfigs,
 }) => {
   const [fromNum, setFromNum] = useState<number>(1);
   const [toNum, setToNum] = useState<number>(118);
@@ -120,16 +129,21 @@ export const BatchImageExportModal: React.FC<BatchImageExportModalProps> = ({
         const filename = `Carta_${paddedNum}_${cleanTitle}.png`;
 
         if (actionTarget === 'r2_and_supabase') {
-          // 1. Upload rendered card to Cloudflare R2 bucket: cartas_renderizadas/carta_XXX.png
+          // 1. Upload rendered card to Cloudflare R2 bucket in target edition folder
           setProgress((prev) => ({
             ...prev,
-            stageText: `Subiendo a R2 (carta_${paddedNum}.png)...`,
+            stageText: `Subiendo a R2 (${r2Folder}/carta_${paddedNum}.png)...`,
           }));
 
-          await uploadRenderedCardToR2(card.cardNumber, dataUrl, r2Config);
+          await uploadRenderedCardToR2(card.cardNumber, dataUrl, r2Config, r2Folder);
 
-          // 2. Save card state to Supabase preserving original illustration
-          await saveCardToSupabase(card);
+          // 2. Save card state to Supabase in dedicated table ('cards' for Good, 'evil_cards' for Evil)
+          const targetTable = edition === 'eviltokkii' ? 'evil_cards' : 'cards';
+          try {
+            await saveCardToSupabase(card, targetTable);
+          } catch (sbErr) {
+            console.warn(`Could not sync card to Supabase table ${targetTable}:`, sbErr);
+          }
         } else if (actionTarget === 'zip' && zip) {
           const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
           zip.file(filename, base64Data, { base64: true });
@@ -507,6 +521,8 @@ export const BatchImageExportModal: React.FC<BatchImageExportModalProps> = ({
               scale={1}
               interactive={false}
               showControls={false}
+              rarityConfigs={rarityConfigs}
+              elementConfigs={elementConfigs}
             />
           </div>
         </div>
