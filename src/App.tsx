@@ -34,7 +34,7 @@ import {
   supabase,
   rowToCard
 } from './utils/supabaseClient';
-import { saveCardsToIndexedDb, loadCardsFromIndexedDb } from './utils/cardStorage';
+import { saveCardsToIndexedDb } from './utils/cardStorage';
 
 export function App() {
   // Admin Authentication State
@@ -62,67 +62,15 @@ export function App() {
     setCurrentAdmin(null);
   };
 
-  // Load Cards
+  // Load Cards directamente sin caché local
   const [cards, setCards] = useState<CardData[]>(() => {
     try {
-      const saved = localStorage.getItem('tokkii_builder_cards');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const localMap = new Map(parsed.map((c: CardData) => [c.id, c]));
-          // Merge default cards while preserving any custom images and attributes from local storage
-          return DEFAULT_CARDS.map((defCard) => {
-            const local = localMap.get(defCard.id);
-            if (!local) return defCard;
-            return {
-              ...local,
-              ...defCard,
-              rarity: (local.rarity && local.rarity !== 'common') ? local.rarity : defCard.rarity,
-              customHoloStyle: local.customHoloStyle || defCard.customHoloStyle,
-              customFoilOpacity: local.customFoilOpacity ?? defCard.customFoilOpacity,
-              customMaskOpacity: local.customMaskOpacity ?? defCard.customMaskOpacity,
-              image: local.image && !local.image.includes('tokkii_photographer.jpg') ? local.image : defCard.image,
-            };
-          });
-        }
-      }
-    } catch {
-      return DEFAULT_CARDS;
-    }
+      localStorage.removeItem('tokkii_builder_cards');
+    } catch {}
     return DEFAULT_CARDS;
   });
 
   const [isSyncingSupabase, setIsSyncingSupabase] = useState(false);
-
-  // Load from IndexedDB on mount (handles high-res images and large storage)
-  useEffect(() => {
-    const loadFromIdb = async () => {
-      try {
-        const idbCards = await loadCardsFromIndexedDb();
-        if (idbCards && idbCards.length > 0) {
-          setCards((currentCards) => {
-            const idbMap = new Map(idbCards.map((c) => [c.id, c]));
-            return currentCards.map((card) => {
-              const fromIdb = idbMap.get(card.id);
-              if (!fromIdb) return card;
-              return {
-                ...card,
-                ...fromIdb,
-                rarity: (fromIdb.rarity && fromIdb.rarity !== 'common') ? fromIdb.rarity : card.rarity,
-                customHoloStyle: fromIdb.customHoloStyle || card.customHoloStyle,
-                customFoilOpacity: fromIdb.customFoilOpacity ?? card.customFoilOpacity,
-                customMaskOpacity: fromIdb.customMaskOpacity ?? card.customMaskOpacity,
-                image: fromIdb.image && !fromIdb.image.includes('tokkii_photographer.jpg') ? fromIdb.image : card.image,
-              };
-            });
-          });
-        }
-      } catch (err) {
-        console.warn('Could not load from IndexedDB:', err);
-      }
-    };
-    loadFromIdb();
-  }, []);
 
   // Auto load from Supabase on mount & Realtime sync
   useEffect(() => {
@@ -240,15 +188,14 @@ export function App() {
     return DEFAULT_PACK_CONFIG;
   });
 
-  // Save to IndexedDB (unlimited) and localStorage
+  // Limpieza periódica de cualquier caché residual
   useEffect(() => {
-    saveCardsToIndexedDb(cards);
     try {
-      localStorage.setItem('tokkii_builder_cards', JSON.stringify(cards));
-    } catch {
-      // localStorage quota exceeded (safe fallback to IndexedDB)
-    }
-  }, [cards]);
+      localStorage.removeItem('tokkii_builder_cards');
+      localStorage.removeItem('tokkii_cached_cards_v1');
+      localStorage.removeItem('tokkii_cached_cards_v1_time');
+    } catch {}
+  }, []);
 
   useEffect(() => {
     try {

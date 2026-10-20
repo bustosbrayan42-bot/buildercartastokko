@@ -104,7 +104,7 @@ export const uploadRenderedCardToR2 = async (
     Key: uniqueKey,
     Body: new Uint8Array(arrayBuffer),
     ContentType: 'image/png',
-    CacheControl: 'public, max-age=31536000',
+    CacheControl: 'no-cache, no-store, must-revalidate',
   });
 
   await s3.send(command);

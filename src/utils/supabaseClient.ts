@@ -99,24 +99,23 @@ export const rowToCard = (row: DbCardRow): CardData => ({
 
 const CARDS_CACHE_KEY = 'tokkii_cached_cards_v1';
 const CARDS_CACHE_TIME_KEY = 'tokkii_cached_cards_v1_time';
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutos de caché local
 
 /**
- * Fetch all cards from Supabase with smart caching
+ * Invalida y elimina cualquier rastro de caché local de cartas
  */
-export const fetchCardsFromSupabase = async (forceRefresh: boolean = false): Promise<CardData[]> => {
-  if (!forceRefresh) {
-    try {
-      const cached = localStorage.getItem(CARDS_CACHE_KEY);
-      const cachedTime = localStorage.getItem(CARDS_CACHE_TIME_KEY);
-      if (cached && cachedTime) {
-        const age = Date.now() - parseInt(cachedTime, 10);
-        if (age < CACHE_TTL_MS) {
-          return JSON.parse(cached);
-        }
-      }
-    } catch {}
-  }
+export const invalidateCardsCache = () => {
+  try {
+    localStorage.removeItem(CARDS_CACHE_KEY);
+    localStorage.removeItem(CARDS_CACHE_TIME_KEY);
+    localStorage.removeItem('tokkii_builder_cards');
+  } catch {}
+};
+
+/**
+ * Fetch all cards directly from Supabase (Cero caché, 100% en vivo)
+ */
+export const fetchCardsFromSupabase = async (_forceRefresh: boolean = false): Promise<CardData[]> => {
+  invalidateCardsCache();
 
   const { data, error } = await supabase
     .from('cards')
@@ -125,31 +124,10 @@ export const fetchCardsFromSupabase = async (forceRefresh: boolean = false): Pro
 
   if (error) {
     console.error('Error fetching cards from Supabase:', error);
-    try {
-      const cached = localStorage.getItem(CARDS_CACHE_KEY);
-      if (cached) return JSON.parse(cached);
-    } catch {}
     throw error;
   }
 
-  const cards = (data as DbCardRow[]).map(rowToCard);
-
-  try {
-    localStorage.setItem(CARDS_CACHE_KEY, JSON.stringify(cards));
-    localStorage.setItem(CARDS_CACHE_TIME_KEY, Date.now().toString());
-  } catch {}
-
-  return cards;
-};
-
-/**
- * Invalida manualmente la caché de cartas
- */
-export const invalidateCardsCache = () => {
-  try {
-    localStorage.removeItem(CARDS_CACHE_KEY);
-    localStorage.removeItem(CARDS_CACHE_TIME_KEY);
-  } catch {}
+  return (data as DbCardRow[]).map(rowToCard);
 };
 
 /**
@@ -166,21 +144,7 @@ export const saveCardToSupabase = async (card: CardData): Promise<void> => {
     throw error;
   }
 
-  // Actualizar también la caché local para no requerir re-descarga completa
-  try {
-    const cached = localStorage.getItem(CARDS_CACHE_KEY);
-    if (cached) {
-      const list: CardData[] = JSON.parse(cached);
-      const idx = list.findIndex(c => c.id === card.id);
-      if (idx >= 0) {
-        list[idx] = card;
-      } else {
-        list.push(card);
-      }
-      localStorage.setItem(CARDS_CACHE_KEY, JSON.stringify(list));
-      localStorage.setItem(CARDS_CACHE_TIME_KEY, Date.now().toString());
-    }
-  } catch {}
+  invalidateCardsCache();
 };
 
 /**
@@ -197,10 +161,7 @@ export const syncAllCardsToSupabase = async (cards: CardData[]): Promise<void> =
     throw error;
   }
 
-  try {
-    localStorage.setItem(CARDS_CACHE_KEY, JSON.stringify(cards));
-    localStorage.setItem(CARDS_CACHE_TIME_KEY, Date.now().toString());
-  } catch {}
+  invalidateCardsCache();
 };
 
 /**
