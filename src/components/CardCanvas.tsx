@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
 import type { CardData, HoloStyle } from '../types/card';
 import { RARITY_CONFIGS, ELEMENT_CONFIGS } from '../data/configs';
 import { playCardFlipSound, playCardHoverSound, playSparkleSound } from '../utils/soundEffects';
@@ -6,6 +6,11 @@ import { resolveImageUrl } from '../utils/imageHelper';
 import { RotateCw, Download, CloudUpload, Loader2, CheckCircle2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { uploadRenderedCardToR2 } from '../utils/r2Storage';
+
+export interface CardCanvasHandle {
+  saveToR2: () => Promise<string | null>;
+  exportPng: () => Promise<void>;
+}
 
 interface CardCanvasProps {
   card: CardData;
@@ -19,7 +24,7 @@ interface CardCanvasProps {
   onSaveError?: (msg: string) => void;
 }
 
-export const CardCanvas: React.FC<CardCanvasProps> = ({
+export const CardCanvas = forwardRef<CardCanvasHandle, CardCanvasProps>(({
   card,
   scale = 1.1,
   interactive = true,
@@ -29,7 +34,7 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
   onSaveCard,
   onSaveSuccess,
   onSaveError,
-}) => {
+}, ref) => {
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const cardFrontRef = useRef<HTMLDivElement>(null);
@@ -145,6 +150,7 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
       const dataUrl = await toPng(targetNode, {
         cacheBust: true,
         pixelRatio: 2.5,
+        skipAutoScale: true,
         style: {
           transform: 'none',
         },
@@ -161,15 +167,16 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
     }
   };
 
-  const handleSaveCardToR2 = async () => {
+  const handleSaveCardToR2 = async (): Promise<string | null> => {
     const targetNode = cardFrontRef.current || cardRef.current;
-    if (!targetNode) return;
+    if (!targetNode) return null;
     setIsSaving(true);
     try {
       // 1. Capture front face in high resolution
       const dataUrl = await toPng(targetNode, {
         cacheBust: true,
         pixelRatio: 2.5,
+        skipAutoScale: true,
         style: {
           transform: 'none',
         },
@@ -186,13 +193,20 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
       setSaveSuccessNotice(true);
       setTimeout(() => setSaveSuccessNotice(false), 4000);
       onSaveSuccess?.(publicUrl);
+      return publicUrl;
     } catch (err: any) {
       console.error('Error saving rendered card to R2:', err);
       onSaveError?.(err?.message || 'Error al guardar la carta en R2');
+      throw err;
     } finally {
       setIsSaving(false);
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    saveToR2: handleSaveCardToR2,
+    exportPng: handleExportPng,
+  }));
 
   // Image transform with Zoom, 360 Rotation, and Offsets
   const imageTransformStyle: React.CSSProperties = {
@@ -268,13 +282,13 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
                 <img
                   src={resolveImageUrl(card.image)}
                   alt={card.title}
+                  crossOrigin="anonymous"
                   className={`w-full h-full ${
                     card.imageFit === 'contain'
                       ? 'object-contain'
                       : 'object-cover'
                   } object-center transition-transform duration-75`}
                   style={imageTransformStyle}
-                  loading="lazy"
                 />
               </div>
             )}
@@ -507,11 +521,11 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
                   <img
                     src={resolveImageUrl(card.image)}
                     alt={card.title}
+                    crossOrigin="anonymous"
                     className={`w-full h-full ${
                       card.imageFit === 'contain' ? 'object-contain' : 'object-cover'
                     } object-center transition-transform duration-75`}
                     style={imageTransformStyle}
-                    loading="lazy"
                   />
 
                   {/* In-Art Holo Texture Effect Layer */}
@@ -700,4 +714,4 @@ export const CardCanvas: React.FC<CardCanvasProps> = ({
       )}
     </div>
   );
-};
+});

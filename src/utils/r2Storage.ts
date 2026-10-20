@@ -18,15 +18,21 @@ export const DEFAULT_R2_CONFIG: R2Config = {
 
 // Retrieve config from localStorage (with fallback to env variables)
 export const getR2Config = (): R2Config => {
+  const config: R2Config = { ...DEFAULT_R2_CONFIG };
   try {
     const saved = localStorage.getItem('tokkii_r2_config');
     if (saved) {
-      return { ...DEFAULT_R2_CONFIG, ...JSON.parse(saved) };
+      const parsed = JSON.parse(saved);
+      if (parsed.accountId?.trim()) config.accountId = parsed.accountId.trim();
+      if (parsed.bucketName?.trim()) config.bucketName = parsed.bucketName.trim();
+      if (parsed.accessKeyId?.trim()) config.accessKeyId = parsed.accessKeyId.trim();
+      if (parsed.secretAccessKey?.trim()) config.secretAccessKey = parsed.secretAccessKey.trim();
+      if (parsed.publicDomain?.trim()) config.publicDomain = parsed.publicDomain.trim();
     }
   } catch (e) {
     console.error('Error loading R2 config:', e);
   }
-  return DEFAULT_R2_CONFIG;
+  return config;
 };
 
 export const saveR2Config = (config: R2Config) => {
@@ -92,17 +98,24 @@ export const uploadRenderedCardToR2 = async (
   config: R2Config = getR2Config()
 ): Promise<string> => {
   const s3 = createR2Client(config);
-  const numStr = String(cardNumber || '001').padStart(3, '0');
+  const cleanDigits = String(cardNumber || '1').replace(/\D/g, '') || '1';
+  const numStr = cleanDigits.padStart(3, '0');
   const uniqueKey = `cartas_renderizadas/carta_${numStr}.png`;
 
-  const res = await fetch(dataUrl);
-  const blob = await res.blob();
-  const arrayBuffer = await blob.arrayBuffer();
+  // Convert base64 dataUrl directly to Uint8Array safely without network fetch
+  const base64Index = dataUrl.indexOf(',');
+  const base64 = base64Index !== -1 ? dataUrl.slice(base64Index + 1) : dataUrl;
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
 
   const command = new PutObjectCommand({
     Bucket: config.bucketName,
     Key: uniqueKey,
-    Body: new Uint8Array(arrayBuffer),
+    Body: bytes,
     ContentType: 'image/png',
     CacheControl: 'no-cache, no-store, must-revalidate',
   });

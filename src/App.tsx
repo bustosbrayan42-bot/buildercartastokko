@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { CardData, BoosterPackConfig } from './types/card';
 import { DEFAULT_CARDS, DEFAULT_PACK_CONFIG } from './data/defaultData';
 import { Header, type BuilderViewMode } from './components/Header';
 import { CardCollectionView } from './components/CardCollectionView';
-import { CardCanvas } from './components/CardCanvas';
+import { CardCanvas, type CardCanvasHandle } from './components/CardCanvas';
 import { CardEditorPanel } from './components/CardEditorPanel';
 import { PackCanvas } from './components/PackCanvas';
 import { PackEditorPanel } from './components/PackEditorPanel';
@@ -40,6 +40,7 @@ export function App() {
   // Admin Authentication State
   const [currentAdmin, setCurrentAdmin] = useState<AdminUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const cardCanvasRef = useRef<CardCanvasHandle>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -674,6 +675,7 @@ const getInitialBuilderView = (): BuilderViewMode => {
 
                     {currentCard ? (
                       <CardCanvas
+                        ref={cardCanvasRef}
                         card={currentCard}
                         scale={1.18}
                         interactive={true}
@@ -701,6 +703,9 @@ const getInitialBuilderView = (): BuilderViewMode => {
                         card={currentCard}
                         onChange={handleCardChange}
                         onSaveToSupabase={saveCardToSupabase}
+                        onSaveToR2={async () => {
+                          await cardCanvasRef.current?.saveToR2();
+                        }}
                       />
                     )}
                   </div>
