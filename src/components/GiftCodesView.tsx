@@ -45,7 +45,6 @@ import {
   type DiscordNotifyMode
 } from '../services/discordWebhookService';
 import {
-  getWhatsAppShareUrl,
   formatWhatsAppMessage,
   getWhatsAppCustomTemplate,
   setWhatsAppCustomTemplate,
@@ -53,7 +52,6 @@ import {
   DEFAULT_WHATSAPP_TEMPLATE,
   getWhatsAppChannelUrl,
   setWhatsAppChannelUrl,
-  getWhatsAppChannelDestinationUrl,
 } from '../services/whatsappShareService';
 
 const DiscordIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
