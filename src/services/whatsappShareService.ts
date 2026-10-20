@@ -1,6 +1,7 @@
 import type { GiftCodeWithStats } from './giftCodeService';
 
 const WHATSAPP_CUSTOM_TEMPLATE_KEY = 'tokkii_whatsapp_custom_template';
+const WHATSAPP_CHANNEL_URL_KEY = 'tokkii_whatsapp_channel_url';
 export const TCG_WEB_OFFICIAL_URL = 'https://tcg.eviltokkii.online/Home';
 
 export const DEFAULT_WHATSAPP_TEMPLATE = 
@@ -61,6 +62,44 @@ export const resetWhatsAppTemplate = (): void => {
     localStorage.removeItem(WHATSAPP_CUSTOM_TEMPLATE_KEY);
   } catch {}
 };
+
+/**
+ * Get user configured WhatsApp Channel URL.
+ */
+export const getWhatsAppChannelUrl = (): string => {
+  try {
+    const saved = localStorage.getItem(WHATSAPP_CHANNEL_URL_KEY);
+    if (saved && saved.trim().length > 0) {
+      return saved.trim();
+    }
+  } catch {}
+  return '';
+};
+
+/**
+ * Save user configured WhatsApp Channel URL.
+ */
+export const setWhatsAppChannelUrl = (url: string): void => {
+  try {
+    localStorage.setItem(WHATSAPP_CHANNEL_URL_KEY, url.trim());
+  } catch (err) {
+    console.warn('Could not save WhatsApp Channel URL to localStorage:', err);
+  }
+};
+
+/**
+ * Generate destination WhatsApp URL:
+ * If a custom channel link is set (e.g. https://whatsapp.com/channel/...), opens that channel directly.
+ * Otherwise opens https://web.whatsapp.com/.
+ */
+export const getWhatsAppChannelDestinationUrl = (customChannelUrl?: string): string => {
+  const url = (customChannelUrl !== undefined ? customChannelUrl : getWhatsAppChannelUrl()).trim();
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  return 'https://web.whatsapp.com/';
+};
+
 
 /**
  * Format badge/label for card packs.

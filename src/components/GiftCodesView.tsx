@@ -50,7 +50,10 @@ import {
   getWhatsAppCustomTemplate,
   setWhatsAppCustomTemplate,
   resetWhatsAppTemplate,
-  DEFAULT_WHATSAPP_TEMPLATE
+  DEFAULT_WHATSAPP_TEMPLATE,
+  getWhatsAppChannelUrl,
+  setWhatsAppChannelUrl,
+  getWhatsAppChannelDestinationUrl,
 } from '../services/whatsappShareService';
 
 const DiscordIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
@@ -105,6 +108,7 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
   });
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [whatsAppTemplateInput, setWhatsAppTemplateInput] = useState<string>(() => getWhatsAppCustomTemplate());
+  const [whatsAppChannelUrl, setWhatsAppChannelUrlState] = useState<string>(() => getWhatsAppChannelUrl());
 
   // Form State
   const [codeWord, setCodeWord] = useState<string>('');
@@ -190,20 +194,20 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
     }
   };
 
-  // WhatsApp Share Handlers
+  // WhatsApp Channel Share Handlers
   const handleShareWhatsApp = (code: GiftCodeWithStats) => {
-    const url = getWhatsAppShareUrl(code, whatsAppTemplateInput);
+    const destUrl = getWhatsAppChannelDestinationUrl(whatsAppChannelUrl);
     const message = formatWhatsAppMessage(code, whatsAppTemplateInput);
 
-    // Abrir WhatsApp en pestaña nueva
-    window.open(url, '_blank', 'noopener,noreferrer');
-
-    // Copiar también al portapapeles para conveniencia
+    // 1. Copiar automáticamente el mensaje formateado al portapapeles
     try {
       navigator.clipboard.writeText(message);
     } catch {}
 
-    // Marcar como publicado persistentemente (igual que Discord)
+    // 2. Abrir el canal de WhatsApp directamente en pestaña nueva
+    window.open(destUrl, '_blank', 'noopener,noreferrer');
+
+    // 3. Marcar como publicado persistentemente
     setPublishedWhatsAppCodes((prev) => {
       const next = new Set(prev).add(code.id);
       try {
@@ -212,12 +216,13 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
       return next;
     });
 
-    onShowToast(`💬 ¡Abriendo WhatsApp con el código "${code.code}" listo para compartir!`);
+    onShowToast(`📋 ¡Mensaje copiado al portapapeles! Abriendo tu Canal de WhatsApp: pega con Ctrl + V`);
   };
 
   const handleSaveWhatsAppTemplate = () => {
     setWhatsAppCustomTemplate(whatsAppTemplateInput);
-    onShowToast('💾 Plantilla de WhatsApp guardada con éxito.');
+    setWhatsAppChannelUrl(whatsAppChannelUrl);
+    onShowToast('💾 Configuración y plantilla de Canal WhatsApp guardadas.');
     setIsWhatsAppModalOpen(false);
   };
 
@@ -764,10 +769,15 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
               type="button"
               onClick={() => setIsWhatsAppModalOpen(true)}
               className="flex items-center gap-2 px-3.5 sm:px-4 py-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-[#25D366]/80 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
-              title="Personalizar plantilla de mensaje para compartir en WhatsApp (100% Gratis)"
+              title="Configurar tu Canal de Difusión de WhatsApp y plantilla"
             >
               <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-              <span className="hidden sm:inline">Plantilla WhatsApp</span>
+              <span className="hidden sm:inline">Canal WhatsApp</span>
+              {whatsAppChannelUrl ? (
+                <span className="w-2 h-2 rounded-full bg-emerald-400" title="Canal configurado" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-slate-500" title="Sin enlace de canal directo" />
+              )}
             </button>
           </div>
 
@@ -867,8 +877,8 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                           }`}
                           title={
                             publishedWhatsAppCodes.has(code.id)
-                              ? 'Ya compartido en WhatsApp (Clic para volver a abrir)'
-                              : 'Compartir este código en WhatsApp (Grupo, Canal o Contacto) - 100% Gratis'
+                              ? 'Ya publicado en el Canal de WhatsApp (Clic para copiar mensaje y abrir de nuevo)'
+                              : 'Publicar este código en tu Canal de WhatsApp (Copia el texto y abre tu canal)'
                           }
                         >
                           {publishedWhatsAppCodes.has(code.id) ? (
@@ -877,7 +887,7 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                             <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
                           )}
                           <span>
-                            {publishedWhatsAppCodes.has(code.id) ? 'Publicado' : 'WhatsApp'}
+                            {publishedWhatsAppCodes.has(code.id) ? 'Publicado' : 'Canal WhatsApp'}
                           </span>
                         </button>
 
@@ -1464,10 +1474,10 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                 </div>
                 <div>
                   <h3 className="font-black text-white text-base leading-tight">
-                    Plantilla de Mensaje para WhatsApp
+                    Canal de Difusión de WhatsApp
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Personaliza el texto que se enviará con 1 clic a tus grupos o canales
+                    Configura tu canal y personaliza el mensaje de canje
                   </p>
                 </div>
               </div>
@@ -1480,13 +1490,31 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
               </button>
             </div>
 
-            {/* Info Box */}
+            {/* Info Box: Explicación de cómo funciona con Canales */}
             <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs flex items-start gap-2.5">
               <Check className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
               <div className="leading-relaxed">
-                <strong className="block text-emerald-200 mb-0.5">100% Gratuito y sin comisiones</strong>
-                Este método utiliza el protocolo oficial <em>Click-to-Chat</em> de WhatsApp. Abre tu WhatsApp Web o móvil con el mensaje listo para enviar al grupo, canal o contacto que elijas sin cobrarte nada.
+                <strong className="block text-emerald-200 mb-0.5">Publicación rápida y 100% gratuita</strong>
+                Meta no permite a sitios web inyectar texto automático dentro de <em>Canales de difusión</em>. Por ello, al hacer clic en <strong>&ldquo;Canal WhatsApp&rdquo;</strong>, la app <strong>copia el anuncio formateado al portapapeles</strong> y abre tu canal al instante: solo haz <strong>Ctrl + V</strong> y enviar.
               </div>
+            </div>
+
+            {/* Input Enlace Canal de WhatsApp */}
+            <div className="space-y-1.5 p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800">
+              <label className="text-xs font-bold text-slate-200 flex items-center justify-between">
+                <span>Enlace directo a tu Canal de WhatsApp</span>
+                <span className="text-[10px] text-emerald-400 font-semibold">Recomendado</span>
+              </label>
+              <input
+                type="url"
+                value={whatsAppChannelUrl}
+                onChange={(e) => setWhatsAppChannelUrlState(e.target.value.trim())}
+                placeholder="https://whatsapp.com/channel/0029Va..."
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#25D366] font-mono"
+              />
+              <p className="text-[11px] text-slate-400 leading-normal">
+                💡 ¿Dónde obtenerlo? En WhatsApp entra a tu <strong>Canal</strong> &gt; presiona el nombre arriba &gt; <strong>&ldquo;Enlace del canal&rdquo;</strong> &gt; <strong>&ldquo;Copiar enlace&rdquo;</strong> y pégalo aquí. (Si lo dejas vacío, abrirá WhatsApp Web por defecto).
+              </p>
             </div>
 
             {/* Editor de Plantilla */}
