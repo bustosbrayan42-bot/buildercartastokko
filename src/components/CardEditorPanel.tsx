@@ -237,67 +237,67 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
   };
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col h-full max-h-[88vh]">
-      {/* Editor Tab Navigation (All 5 tabs fully visible, no horizontal scroll) */}
-      <div className="grid grid-cols-5 gap-1.5 p-2 bg-slate-950 rounded-2xl border border-slate-800 shrink-0">
+    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-2xl flex flex-col h-full max-h-[88vh]">
+      {/* Editor Tab Navigation (Responsive scrollable tabs with zero clipping) */}
+      <div className="flex items-center gap-1.5 p-1.5 sm:p-2 bg-slate-950 rounded-2xl border border-slate-800 shrink-0 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('info')}
-          className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-xs font-bold transition-all border ${
+          className={`flex items-center justify-center gap-1.5 py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all border shrink-0 whitespace-nowrap ${
             activeTab === 'info'
               ? 'bg-slate-800 text-amber-400 border-amber-400/80 shadow-[0_0_10px_rgba(234,179,8,0.25)]'
               : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-900'
           }`}
         >
           <Type className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">Identidad</span>
+          <span>Identidad</span>
         </button>
 
         <button
           onClick={() => setActiveTab('art')}
-          className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-xs font-bold transition-all border ${
+          className={`flex items-center justify-center gap-1.5 py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all border shrink-0 whitespace-nowrap ${
             activeTab === 'art'
               ? 'bg-slate-800 text-amber-400 border-amber-400/80 shadow-[0_0_10px_rgba(234,179,8,0.25)]'
               : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-900'
           }`}
         >
           <Palette className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">Arte & Encuadre</span>
+          <span>Arte & Encuadre</span>
         </button>
 
         <button
           onClick={() => setActiveTab('holo')}
-          className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-xs font-bold transition-all border ${
+          className={`flex items-center justify-center gap-1.5 py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all border shrink-0 whitespace-nowrap ${
             activeTab === 'holo'
               ? 'bg-slate-800 text-amber-400 border-amber-400/80 shadow-[0_0_10px_rgba(234,179,8,0.25)]'
               : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-900'
           }`}
         >
           <Sparkles className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">Rareza & Foil</span>
+          <span>Rareza & Foil</span>
         </button>
 
         <button
           onClick={() => setActiveTab('attacks')}
-          className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-xs font-bold transition-all border ${
+          className={`flex items-center justify-center gap-1.5 py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all border shrink-0 whitespace-nowrap ${
             activeTab === 'attacks'
               ? 'bg-slate-800 text-amber-400 border-amber-400/80 shadow-[0_0_10px_rgba(234,179,8,0.25)]'
               : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-900'
           }`}
         >
           <Zap className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">Ataques ({card.attacks?.length || 0})</span>
+          <span>Ataques ({card.attacks?.length || 0})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('stats')}
-          className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl text-xs font-bold transition-all border ${
+          className={`flex items-center justify-center gap-1.5 py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all border shrink-0 whitespace-nowrap ${
             activeTab === 'stats'
               ? 'bg-slate-800 text-amber-400 border-amber-400/80 shadow-[0_0_10px_rgba(234,179,8,0.25)]'
               : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-900'
           }`}
         >
           <Shield className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">Atributos</span>
+          <span>Atributos</span>
         </button>
       </div>
 

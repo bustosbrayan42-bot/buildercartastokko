@@ -31,6 +31,25 @@ export const PackOpenerModal: React.FC<PackOpenerModalProps> = ({
   const [pulledCards, setPulledCards] = useState<CardData[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState<number>(0);
 
+  const [modalScale, setModalScale] = useState<number>(() => {
+    if (typeof window === 'undefined') return 1.05;
+    const w = window.innerWidth;
+    if (w < 400) return 0.78;
+    if (w < 640) return 0.88;
+    return 1.05;
+  });
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      const w = window.innerWidth;
+      if (w < 400) setModalScale(0.78);
+      else if (w < 640) setModalScale(0.88);
+      else setModalScale(1.05);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleOpenPack = () => {
     if (animState !== 'unopened') return;
 
@@ -106,16 +125,16 @@ export const PackOpenerModal: React.FC<PackOpenerModalProps> = ({
   const activeRarityConfig = activeCard ? RARITY_CONFIGS[activeCard.rarity] : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-2xl animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/95 backdrop-blur-2xl animate-in fade-in overflow-y-auto">
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-6 right-6 z-50 w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-colors shadow-lg"
+        className="absolute top-3 right-3 sm:top-6 sm:right-6 z-50 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-colors shadow-lg cursor-pointer"
       >
-        <X className="w-5 h-5" />
+        <X className="w-4 h-4 sm:w-5 sm:h-5" />
       </button>
 
-      <div className="flex flex-col items-center justify-center max-w-2xl w-full text-center relative">
+      <div className="flex flex-col items-center justify-center max-w-2xl w-full text-center relative py-6 my-auto">
         {/* ========================================================
             PHASE 1 & 2: PHYSICAL FOIL SLIT TEAR & SLIDE ANIMATION
            ======================================================== */}
@@ -290,7 +309,7 @@ export const PackOpenerModal: React.FC<PackOpenerModalProps> = ({
 
               {/* Main 3D Card Stage */}
               <div className="relative py-2">
-                <CardCanvas card={activeCard} scale={1.05} interactive={true} />
+                <CardCanvas card={activeCard} scale={modalScale} interactive={true} />
               </div>
 
               {/* Bottom Multi-Card Thumbnails Stack & Actions */}

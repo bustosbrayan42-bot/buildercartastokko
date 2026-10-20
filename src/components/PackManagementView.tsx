@@ -140,7 +140,7 @@ export const PackManagementView: React.FC<PackManagementViewProps> = ({ onShowTo
       {/* Main Grid: Form Panel (Left) + Users Overview (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* PANEL 1: Send Form (5 Columns) */}
-        <div className="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5">
+        <div className="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-5">
           <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-3">
             <Send className="w-4 h-4 text-amber-400" />
             Enviar Sobres a Usuario
@@ -220,12 +220,12 @@ export const PackManagementView: React.FC<PackManagementViewProps> = ({ onShowTo
             )}
           </div>
 
-          {/* Pack Type and Quantity Selector (4 columns in one horizontal line) */}
+          {/* Pack Type and Quantity Selector (2x2 on mobile, 4 columns on tablet/desktop) */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-300 block">
               Tipo de Sobre y Cantidad a Enviar:
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
                 { type: 'pack_1' as const, label: '1 Carta', desc: 'Individual' },
                 { type: 'pack_3' as const, label: '3 Cartas', desc: 'Estándar' },
@@ -282,7 +282,7 @@ export const PackManagementView: React.FC<PackManagementViewProps> = ({ onShowTo
         </div>
 
         {/* PANEL 2: Registered Users Table / Direct Action (7 Columns) */}
-        <div className="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+        <div className="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
               <Users className="w-4 h-4 text-purple-400" />

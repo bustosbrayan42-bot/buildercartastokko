@@ -429,14 +429,14 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-200">
       {/* Top Banner / Title */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 p-6 rounded-3xl backdrop-blur-md shadow-xl">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-600 to-cyan-500 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.35)] shrink-0">
-            <Ticket className="w-6 h-6 text-white" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-md shadow-xl">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-600 to-cyan-500 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.35)] shrink-0">
+            <Ticket className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-black text-white tracking-wide">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg sm:text-xl font-black text-white tracking-wide">
                 GENERADOR DE CÓDIGOS DE REGALO
               </h2>
               <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-mono font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
@@ -450,33 +450,33 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
         </div>
 
         {/* Quick Stats Badges */}
-        <div className="flex items-center gap-3">
-          <div className="bg-slate-950/80 border border-slate-800 px-4 py-2 rounded-2xl flex flex-col items-center">
-            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Códigos</span>
-            <span className="text-lg font-black text-white">{totalCodesCount}</span>
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <div className="bg-slate-950/80 border border-slate-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl flex flex-col items-center">
+            <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium uppercase tracking-wider">Códigos</span>
+            <span className="text-base sm:text-lg font-black text-white">{totalCodesCount}</span>
           </div>
-          <div className="bg-slate-950/80 border border-slate-800 px-4 py-2 rounded-2xl flex flex-col items-center">
-            <span className="text-[10px] text-emerald-400 font-medium uppercase tracking-wider">Activos</span>
-            <span className="text-lg font-black text-emerald-400">{activeCodesCount}</span>
+          <div className="bg-slate-950/80 border border-slate-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl flex flex-col items-center">
+            <span className="text-[9px] sm:text-[10px] text-emerald-400 font-medium uppercase tracking-wider">Activos</span>
+            <span className="text-base sm:text-lg font-black text-emerald-400">{activeCodesCount}</span>
           </div>
-          <div className="bg-slate-950/80 border border-slate-800 px-4 py-2 rounded-2xl flex flex-col items-center">
-            <span className="text-[10px] text-amber-400 font-medium uppercase tracking-wider">Canjes Totales</span>
-            <span className="text-lg font-black text-amber-400">{totalRedemptionsCount}</span>
+          <div className="bg-slate-950/80 border border-slate-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl flex flex-col items-center">
+            <span className="text-[9px] sm:text-[10px] text-amber-400 font-medium uppercase tracking-wider">Canjes Totales</span>
+            <span className="text-base sm:text-lg font-black text-amber-400">{totalRedemptionsCount}</span>
           </div>
           <button
             onClick={loadCodes}
             disabled={isLoading}
             title="Refrescar datos"
-            className="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer disabled:opacity-50"
+            className="p-2.5 sm:p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
         {/* LEFT COLUMN: Generator Form (5 Cols) */}
-        <div className="lg:col-span-5 bg-slate-900/80 border border-slate-800 p-6 rounded-3xl backdrop-blur-md shadow-2xl space-y-6">
+        <div className="lg:col-span-5 bg-slate-900/80 border border-slate-800 p-4 sm:p-6 rounded-2xl sm:rounded-3xl backdrop-blur-md shadow-2xl space-y-5 sm:space-y-6">
           <div className="flex items-center gap-2 pb-4 border-b border-slate-800">
             <Sparkles className="w-5 h-5 text-emerald-400" />
             <h3 className="font-bold text-sm text-white uppercase tracking-wider">

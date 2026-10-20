@@ -246,6 +246,27 @@ const getInitialBuilderView = (): BuilderViewMode => {
     } catch {}
     return 'collection';
   });
+
+  const [editorCardScale, setEditorCardScale] = useState<number>(() => {
+    if (typeof window === 'undefined') return 1.18;
+    const w = window.innerWidth;
+    if (w < 400) return 0.8;
+    if (w < 640) return 0.92;
+    if (w < 1024) return 1.05;
+    return 1.18;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      const w = window.innerWidth;
+      if (w < 400) setEditorCardScale(0.8);
+      else if (w < 640) setEditorCardScale(0.92);
+      else if (w < 1024) setEditorCardScale(1.05);
+      else setEditorCardScale(1.18);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [selectedCardId, setSelectedCardId] = useState<string>(() => {
     try {
       const savedId = localStorage.getItem('tokkii_builder_selected_card_id');
@@ -566,7 +587,7 @@ const getInitialBuilderView = (): BuilderViewMode => {
       />
 
       {/* Main Studio Area */}
-      <main className="flex-1 max-w-[1750px] w-full mx-auto px-3 sm:px-5 lg:px-6 py-5">
+      <main className="flex-1 max-w-[1750px] w-full mx-auto px-2 sm:px-5 lg:px-6 py-4 sm:py-5 pb-20 lg:pb-6">
         {/* VIEW 1: CARD STUDIO */}
         {currentView === 'card_builder' && (
           <div>
@@ -667,7 +688,7 @@ const getInitialBuilderView = (): BuilderViewMode => {
                 {/* 2-PANEL LAYOUT: 3D CARD VIEWER + ADJUSTMENT EDITOR */}
                 <div className="flex flex-col lg:flex-row gap-5 items-start justify-center">
                   {/* PANEL 1: Interactive 3D Card Canvas Preview */}
-                  <div className="w-full lg:w-[420px] xl:w-[450px] shrink-0 flex flex-col items-center justify-center p-5 bg-slate-900/40 border border-slate-800 rounded-3xl backdrop-blur-md shadow-2xl relative min-h-[640px]">
+                  <div className="w-full lg:w-[420px] xl:w-[450px] shrink-0 flex flex-col items-center justify-center p-3 sm:p-5 bg-slate-900/40 border border-slate-800 rounded-3xl backdrop-blur-md shadow-2xl relative min-h-[440px] sm:min-h-[560px] lg:min-h-[640px]">
                     <div className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                       Renderizador en Tiempo Real 3D
@@ -677,7 +698,7 @@ const getInitialBuilderView = (): BuilderViewMode => {
                       <CardCanvas
                         ref={cardCanvasRef}
                         card={currentCard}
-                        scale={1.18}
+                        scale={editorCardScale}
                         interactive={true}
                         onExportSuccess={() => showToast('¡Imagen PNG generada y descargada!')}
                         onSaveCard={async (savedCard) => {
