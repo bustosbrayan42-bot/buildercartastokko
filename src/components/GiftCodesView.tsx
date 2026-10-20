@@ -195,19 +195,34 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
   };
 
   // WhatsApp Channel Share Handlers
-  const handleShareWhatsApp = (code: GiftCodeWithStats) => {
-    const destUrl = getWhatsAppChannelDestinationUrl(whatsAppChannelUrl);
+  const handleShareWhatsApp = async (code: GiftCodeWithStats) => {
     const message = formatWhatsAppMessage(code, whatsAppTemplateInput);
 
-    // 1. Copiar automáticamente el mensaje formateado al portapapeles
+    // 1. Copiar automáticamente el mensaje formateado al portapapeles (sin redirigir)
+    let copied = false;
     try {
-      navigator.clipboard.writeText(message);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(message);
+        copied = true;
+      }
     } catch {}
 
-    // 2. Abrir el canal de WhatsApp directamente en pestaña nueva
-    window.open(destUrl, '_blank', 'noopener,noreferrer');
+    if (!copied) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = message;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        copied = true;
+      } catch {}
+    }
 
-    // 3. Marcar como publicado persistentemente
+    // 2. Marcar como publicado / copiado persistentemente
     setPublishedWhatsAppCodes((prev) => {
       const next = new Set(prev).add(code.id);
       try {
@@ -216,7 +231,7 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
       return next;
     });
 
-    onShowToast(`📋 ¡Mensaje copiado al portapapeles! Abriendo tu Canal de WhatsApp: pega con Ctrl + V`);
+    onShowToast(`📋 ¡Mensaje del código "${code.code}" copiado al portapapeles! Listo para pegar en tu canal.`);
   };
 
   const handleSaveWhatsAppTemplate = () => {
@@ -877,8 +892,8 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                           }`}
                           title={
                             publishedWhatsAppCodes.has(code.id)
-                              ? 'Ya publicado en el Canal de WhatsApp (Clic para copiar mensaje y abrir de nuevo)'
-                              : 'Publicar este código en tu Canal de WhatsApp (Copia el texto y abre tu canal)'
+                              ? 'Mensaje copiado para WhatsApp (Clic para volver a copiar)'
+                              : 'Copiar mensaje para publicar en tu Canal de WhatsApp (sin redirigir)'
                           }
                         >
                           {publishedWhatsAppCodes.has(code.id) ? (
@@ -887,7 +902,7 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                             <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
                           )}
                           <span>
-                            {publishedWhatsAppCodes.has(code.id) ? 'Publicado' : 'Canal WhatsApp'}
+                            {publishedWhatsAppCodes.has(code.id) ? 'Copiado' : 'Canal WhatsApp'}
                           </span>
                         </button>
 
@@ -1494,8 +1509,8 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
             <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs flex items-start gap-2.5">
               <Check className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
               <div className="leading-relaxed">
-                <strong className="block text-emerald-200 mb-0.5">Publicación rápida y 100% gratuita</strong>
-                Meta no permite a sitios web inyectar texto automático dentro de <em>Canales de difusión</em>. Por ello, al hacer clic en <strong>&ldquo;Canal WhatsApp&rdquo;</strong>, la app <strong>copia el anuncio formateado al portapapeles</strong> y abre tu canal al instante: solo haz <strong>Ctrl + V</strong> y enviar.
+                <strong className="block text-emerald-200 mb-0.5">Copia directa al portapapeles (Sin redirigir)</strong>
+                Al hacer clic en <strong>&ldquo;Canal WhatsApp&rdquo;</strong>, la app <strong>copia al instante todo el anuncio con el código y enlaces a tu portapapeles</strong> sin sacarte de la página ni abrir ventanas molestas. Luego solo ve a tu canal y haz <strong>Ctrl + V</strong>.
               </div>
             </div>
 
