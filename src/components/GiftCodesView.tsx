@@ -22,6 +22,8 @@ import {
   createGiftCode,
   toggleGiftCodeActive,
   deleteGiftCode,
+  markGiftCodeShared,
+  toggleGiftCodeShared,
   type GiftCodeWithStats,
   type PackType
 } from '../services/giftCodeService';
@@ -126,6 +128,24 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
       setIsLoading(true);
       const data = await fetchGiftCodesWithStats();
       setCodes(data);
+
+      // Sincronizar automáticamente hacia R2 cualquier código que ya haya sido compartido en el dispositivo actual
+      const unsyncedDiscord = data.filter((c) => !c.shared_discord && publishedCodes.has(c.id));
+      const unsyncedWhatsApp = data.filter((c) => !c.shared_whatsapp && publishedWhatsAppCodes.has(c.id));
+
+      if (unsyncedDiscord.length > 0 || unsyncedWhatsApp.length > 0) {
+        for (const c of unsyncedDiscord) {
+          markGiftCodeShared(c.id, 'discord', true).catch(() => {});
+          c.shared_discord = true;
+          c.shared_discord_at = new Date().toISOString();
+        }
+        for (const c of unsyncedWhatsApp) {
+          markGiftCodeShared(c.id, 'whatsapp', true).catch(() => {});
+          c.shared_whatsapp = true;
+          c.shared_whatsapp_at = new Date().toISOString();
+        }
+        setCodes([...data]);
+      }
     } catch (err) {
       console.error('Error fetching gift codes:', err);
       onShowToast('❌ Error al cargar los códigos de regalo.');
@@ -161,7 +181,7 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
     }
   };
 
-  // Discord Publishing Handler
+  // Discord Publishing Handler (Persistente en R2 para todos los dispositivos)
   const handlePublishToDiscord = async (code: GiftCodeWithStats) => {
     if (!isDiscordWebhookConfigured()) {
       setCodeToPublishAfterConfig(code);
@@ -174,6 +194,14 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
       setPublishingCodeId(code.id);
       const result = await publishGiftCodeToDiscord(code);
       if (result.success) {
+        const now = new Date().toISOString();
+        // 1. Guardar en R2 para que todos los dispositivos logueados lo vean como publicado
+        await markGiftCodeShared(code.id, 'discord', true);
+        setCodes((prev) =>
+          prev.map((c) => (c.id === code.id ? { ...c, shared_discord: true, shared_discord_at: now } : c))
+        );
+
+        // 2. Mantener copia local en localStorage
         setPublishedCodes((prev) => {
           const next = new Set(prev).add(code.id);
           try {
@@ -181,7 +209,8 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
           } catch {}
           return next;
         });
-        onShowToast(`✅ ¡Código "${code.code}" publicado en tu canal de Discord!`);
+
+        onShowToast(`✅ ¡Código "${code.code}" publicado en Discord y sincronizado en la nube!`);
       } else {
         onShowToast(`❌ ${result.error || 'No se pudo publicar en Discord'}`);
       }
@@ -192,7 +221,7 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
     }
   };
 
-  // WhatsApp Channel Share Handlers
+  // WhatsApp Channel Share Handlers (Persistente en R2 para todos los dispositivos)
   const handleShareWhatsApp = async (code: GiftCodeWithStats) => {
     const message = formatWhatsAppMessage(code, whatsAppTemplateInput);
 
@@ -220,7 +249,18 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
       } catch {}
     }
 
-    // 2. Marcar como publicado / copiado persistentemente
+    // 2. Marcar como publicado / compartido persistentemente en R2 para todos los dispositivos
+    const now = new Date().toISOString();
+    try {
+      await markGiftCodeShared(code.id, 'whatsapp', true);
+      setCodes((prev) =>
+        prev.map((c) => (c.id === code.id ? { ...c, shared_whatsapp: true, shared_whatsapp_at: now } : c))
+      );
+    } catch (err) {
+      console.warn('Could not sync WhatsApp share to R2:', err);
+    }
+
+    // 3. Mantener copia local
     setPublishedWhatsAppCodes((prev) => {
       const next = new Set(prev).add(code.id);
       try {
@@ -229,7 +269,55 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
       return next;
     });
 
-    onShowToast(`📋 ¡Mensaje del código "${code.code}" copiado al portapapeles! Listo para pegar en tu canal.`);
+    onShowToast(`📋 ¡Mensaje del código "${code.code}" copiado al portapapeles y sincronizado!`);
+  };
+
+  // Alternar manualmente estado de compartido (Clic derecho para desmarcar o re-marcar)
+  const handleToggleShare = async (code: GiftCodeWithStats, network: 'discord' | 'whatsapp') => {
+    try {
+      const { newState } = await toggleGiftCodeShared(code.id, network);
+      const now = new Date().toISOString();
+      setCodes((prev) =>
+        prev.map((c) => {
+          if (c.id === code.id) {
+            return network === 'discord'
+              ? { ...c, shared_discord: newState, shared_discord_at: newState ? now : undefined }
+              : { ...c, shared_whatsapp: newState, shared_whatsapp_at: newState ? now : undefined };
+          }
+          return c;
+        })
+      );
+
+      if (network === 'discord') {
+        setPublishedCodes((prev) => {
+          const next = new Set(prev);
+          if (newState) next.add(code.id);
+          else next.delete(code.id);
+          try {
+            localStorage.setItem('tokkii_published_discord_codes', JSON.stringify([...next]));
+          } catch {}
+          return next;
+        });
+      } else {
+        setPublishedWhatsAppCodes((prev) => {
+          const next = new Set(prev);
+          if (newState) next.add(code.id);
+          else next.delete(code.id);
+          try {
+            localStorage.setItem('tokkii_published_whatsapp_codes', JSON.stringify([...next]));
+          } catch {}
+          return next;
+        });
+      }
+
+      onShowToast(
+        newState
+          ? `✅ Marcado como compartido en ${network === 'discord' ? 'Discord' : 'Canal WhatsApp'}`
+          : `ℹ️ Desmarcado de ${network === 'discord' ? 'Discord' : 'Canal WhatsApp'}`
+      );
+    } catch (err: any) {
+      onShowToast(`Error al sincronizar estado: ${err?.message || err}`);
+    }
   };
 
   const handleSaveWhatsAppTemplate = () => {
@@ -878,70 +966,89 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                       </div>
 
                       {/* Right: Compact Share Buttons & Reward Pill */}
-                      <div className="flex items-center gap-2 shrink-0 justify-end flex-wrap sm:flex-nowrap">
-                        {/* Botón WhatsApp */}
-                        <button
-                          type="button"
-                          onClick={() => handleShareWhatsApp(code)}
-                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 shrink-0 whitespace-nowrap ${
-                            publishedWhatsAppCodes.has(code.id)
-                              ? 'bg-[#25D366]/20 text-emerald-300 border border-[#25D366]/40 hover:bg-[#25D366]/30'
-                              : 'bg-[#25D366] hover:bg-[#20ba5c] text-white border border-[#25D366]/80 shadow-[0_0_10px_rgba(37,211,102,0.3)]'
-                          }`}
-                          title={
-                            publishedWhatsAppCodes.has(code.id)
-                              ? 'Mensaje copiado para WhatsApp (Clic para volver a copiar)'
-                              : 'Copiar mensaje para publicar en tu Canal de WhatsApp (sin redirigir)'
-                          }
-                        >
-                          {publishedWhatsAppCodes.has(code.id) ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-300" />
-                          ) : (
-                            <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
-                          )}
-                          <span>
-                            {publishedWhatsAppCodes.has(code.id) ? 'Copiado' : 'Canal WhatsApp'}
-                          </span>
-                        </button>
+                      {(() => {
+                        const isWhatsAppShared = Boolean(code.shared_whatsapp || publishedWhatsAppCodes.has(code.id));
+                        const isDiscordShared = Boolean(code.shared_discord || publishedCodes.has(code.id));
 
-                        {/* Botón Discord */}
-                        <button
-                          type="button"
-                          onClick={() => handlePublishToDiscord(code)}
-                          disabled={publishingCodeId === code.id}
-                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap ${
-                            publishedCodes.has(code.id)
-                              ? 'bg-[#5865F2]/20 text-[#a5b4fc] border border-[#5865F2]/40 hover:bg-[#5865F2]/30'
-                              : 'bg-[#5865F2] hover:bg-[#4752C4] text-white border border-[#5865F2]/80 shadow-[0_0_10px_rgba(88,101,242,0.3)]'
-                          }`}
-                          title="Publicar este código de regalo directamente en Discord"
-                        >
-                          {publishingCodeId === code.id ? (
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          ) : publishedCodes.has(code.id) ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-300" />
-                          ) : (
-                            <DiscordIcon className="w-3.5 h-3.5 text-white" />
-                          )}
-                          <span>
-                            {publishingCodeId === code.id
-                              ? 'Enviando...'
-                              : publishedCodes.has(code.id)
-                              ? 'Publicado'
-                              : 'Discord'}
-                          </span>
-                        </button>
+                        return (
+                          <div className="flex items-center gap-2 shrink-0 justify-end flex-wrap sm:flex-nowrap">
+                            {/* Botón WhatsApp */}
+                            <button
+                              type="button"
+                              onClick={() => handleShareWhatsApp(code)}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                handleToggleShare(code, 'whatsapp');
+                              }}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 shrink-0 whitespace-nowrap ${
+                                isWhatsAppShared
+                                  ? 'bg-[#25D366]/20 text-emerald-300 border border-[#25D366]/40 hover:bg-[#25D366]/30'
+                                  : 'bg-[#25D366] hover:bg-[#20ba5c] text-white border border-[#25D366]/80 shadow-[0_0_10px_rgba(37,211,102,0.3)]'
+                              }`}
+                              title={
+                                isWhatsAppShared
+                                  ? `Compartido en Canal WhatsApp${code.shared_whatsapp_at ? ` (${new Date(code.shared_whatsapp_at).toLocaleDateString()})` : ''} (Clic para copiar mensaje, Clic derecho para desmarcar)`
+                                  : 'Copiar mensaje para publicar en tu Canal de WhatsApp (sin redirigir)'
+                              }
+                            >
+                              {isWhatsAppShared ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-300" />
+                              ) : (
+                                <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
+                              )}
+                              <span>
+                                {isWhatsAppShared ? 'Compartido' : 'Canal WhatsApp'}
+                              </span>
+                            </button>
 
-                        {/* Burbuja del tipo de sobre */}
-                        <span className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border bg-gradient-to-r shrink-0 whitespace-nowrap ${getPackColor(code.pack_type)}`}>
-                          🎁 {getPackLabel(code.pack_type, code.pack_quantity)}
-                        </span>
-                      </div>
+                            {/* Botón Discord */}
+                            <button
+                              type="button"
+                              onClick={() => handlePublishToDiscord(code)}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                handleToggleShare(code, 'discord');
+                              }}
+                              disabled={publishingCodeId === code.id}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap ${
+                                isDiscordShared
+                                  ? 'bg-[#5865F2]/20 text-[#a5b4fc] border border-[#5865F2]/40 hover:bg-[#5865F2]/30'
+                                  : 'bg-[#5865F2] hover:bg-[#4752C4] text-white border border-[#5865F2]/80 shadow-[0_0_10px_rgba(88,101,242,0.3)]'
+                              }`}
+                              title={
+                                isDiscordShared
+                                  ? `Publicado en Discord${code.shared_discord_at ? ` (${new Date(code.shared_discord_at).toLocaleDateString()})` : ''} (Clic para volver a enviar, Clic derecho para desmarcar)`
+                                  : 'Publicar este código de regalo directamente en Discord'
+                              }
+                            >
+                              {publishingCodeId === code.id ? (
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              ) : isDiscordShared ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-300" />
+                              ) : (
+                                <DiscordIcon className="w-3.5 h-3.5 text-white" />
+                              )}
+                              <span>
+                                {publishingCodeId === code.id
+                                  ? 'Enviando...'
+                                  : isDiscordShared
+                                  ? 'Publicado'
+                                  : 'Discord'}
+                              </span>
+                            </button>
+
+                            {/* Burbuja del tipo de sobre */}
+                            <span className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border bg-gradient-to-r shrink-0 whitespace-nowrap ${getPackColor(code.pack_type)}`}>
+                              🎁 {getPackLabel(code.pack_type, code.pack_quantity)}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Progress & Metrics */}
                     <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                      <div className="flex items-center gap-4 text-slate-400">
+                      <div className="flex items-center gap-3 text-slate-400 flex-wrap">
                         {/* Usage Counter */}
                         <div className="flex items-center gap-1.5 font-mono">
                           <Users className="w-3.5 h-3.5 text-slate-500" />
@@ -962,6 +1069,24 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                             ? '1 canje máx. por usuario'
                             : `${code.max_uses_per_user} canjes máx. por usuario`}
                         </span>
+
+                        {/* Badges de redes compartidas sincronizadas */}
+                        {(code.shared_whatsapp || publishedWhatsAppCodes.has(code.id)) && (
+                          <span
+                            className="text-[10px] font-bold bg-[#25D366]/15 text-emerald-400 border border-[#25D366]/30 px-2 py-0.5 rounded-lg flex items-center gap-1 shrink-0"
+                            title={code.shared_whatsapp_at ? `Compartido en Canal WhatsApp: ${new Date(code.shared_whatsapp_at).toLocaleString()}` : 'Compartido en WhatsApp'}
+                          >
+                            <Check className="w-3 h-3 text-emerald-400" /> WhatsApp
+                          </span>
+                        )}
+                        {(code.shared_discord || publishedCodes.has(code.id)) && (
+                          <span
+                            className="text-[10px] font-bold bg-[#5865F2]/15 text-[#a5b4fc] border border-[#5865F2]/30 px-2 py-0.5 rounded-lg flex items-center gap-1 shrink-0"
+                            title={code.shared_discord_at ? `Publicado en Discord: ${new Date(code.shared_discord_at).toLocaleString()}` : 'Publicado en Discord'}
+                          >
+                            <Check className="w-3 h-3 text-indigo-300" /> Discord
+                          </span>
+                        )}
                       </div>
 
                       {/* Actions */}

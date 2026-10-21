@@ -15,6 +15,10 @@ export interface GiftCode {
   created_at: string;
   updated_at?: string;
   description?: string;
+  shared_discord?: boolean;
+  shared_discord_at?: string;
+  shared_whatsapp?: boolean;
+  shared_whatsapp_at?: string;
 }
 
 export interface CodeRedemptionRecord {
@@ -254,4 +258,78 @@ export const deleteGiftCode = async (codeId: string): Promise<void> => {
       // ignore
     }
   }
+};
+
+/**
+ * Mark a gift code as shared on Discord or WhatsApp in R2 storage
+ */
+export const markGiftCodeShared = async (
+  codeId: string,
+  network: 'discord' | 'whatsapp',
+  isShared: boolean = true
+): Promise<GiftCode[]> => {
+  const codes = await fetchGiftCodesFromStorage();
+  const now = new Date().toISOString();
+  const updated = codes.map((c) => {
+    if (c.id === codeId) {
+      if (network === 'discord') {
+        return {
+          ...c,
+          shared_discord: isShared,
+          shared_discord_at: isShared ? (c.shared_discord_at || now) : undefined,
+          updated_at: now,
+        };
+      }
+      if (network === 'whatsapp') {
+        return {
+          ...c,
+          shared_whatsapp: isShared,
+          shared_whatsapp_at: isShared ? (c.shared_whatsapp_at || now) : undefined,
+          updated_at: now,
+        };
+      }
+    }
+    return c;
+  });
+
+  await saveGiftCodesToStorage(updated);
+  return updated;
+};
+
+/**
+ * Toggle a gift code's shared status on Discord or WhatsApp
+ */
+export const toggleGiftCodeShared = async (
+  codeId: string,
+  network: 'discord' | 'whatsapp'
+): Promise<{ updatedCodes: GiftCode[]; newState: boolean }> => {
+  const codes = await fetchGiftCodesFromStorage();
+  let newState = false;
+  const now = new Date().toISOString();
+  const updated = codes.map((c) => {
+    if (c.id === codeId) {
+      if (network === 'discord') {
+        newState = !c.shared_discord;
+        return {
+          ...c,
+          shared_discord: newState,
+          shared_discord_at: newState ? now : undefined,
+          updated_at: now,
+        };
+      }
+      if (network === 'whatsapp') {
+        newState = !c.shared_whatsapp;
+        return {
+          ...c,
+          shared_whatsapp: newState,
+          shared_whatsapp_at: newState ? now : undefined,
+          updated_at: now,
+        };
+      }
+    }
+    return c;
+  });
+
+  await saveGiftCodesToStorage(updated);
+  return { updatedCodes: updated, newState };
 };
