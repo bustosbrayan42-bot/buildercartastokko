@@ -145,11 +145,17 @@ export const isDiscordWebhookConfigured = (): boolean => {
   );
 };
 
-const getPackBadgeInfo = (packType: string, quantity: number) => {
+const getPackBadgeInfo = (packType: string, quantity: number, packPool?: { pack_1: number; pack_3: number; pack_5: number }) => {
   let label = 'Sobre de Cartas';
   let color = 0xF50B8C; // Pink default
 
-  if (packType === 'pack_1') {
+  if (packType === 'multi' || packPool) {
+    const p1 = packPool?.pack_1 || 0;
+    const p3 = packPool?.pack_3 || 0;
+    const p5 = packPool?.pack_5 || 0;
+    label = `🎲 Multisobres Sorpresa (Pool: ${p1}x 1c, ${p3}x 3c, ${p5}x 5c)`;
+    color = 0x9333EA; // Purple
+  } else if (packType === 'pack_1') {
     label = `${quantity}x Sobre de 1 Carta (Básico)`;
     color = 0x06B6D4; // Cyan
   } else if (packType === 'pack_3') {
@@ -248,7 +254,7 @@ export const publishGiftCodeToDiscord = async (
     };
   }
 
-  const { label: packLabel, color: embedColor } = getPackBadgeInfo(code.pack_type, code.pack_quantity);
+  const { label: packLabel, color: embedColor } = getPackBadgeInfo(code.pack_type, code.pack_quantity, code.pack_pool);
 
   const totalUsesText =
     code.max_total_uses === null

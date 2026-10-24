@@ -25,7 +25,8 @@ import {
   markGiftCodeShared,
   toggleGiftCodeShared,
   type GiftCodeWithStats,
-  type PackType
+  type PackType,
+  type PackPool
 } from '../services/giftCodeService';
 import {
   getDiscordWebhookUrl,
@@ -114,6 +115,11 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
   const [codeWord, setCodeWord] = useState<string>('');
   const [packType, setPackType] = useState<PackType>('pack_3');
   const [packQuantity, setPackQuantity] = useState<number>(1);
+  const [packPool, setPackPool] = useState<PackPool>({
+    pack_1: 5,
+    pack_3: 5,
+    pack_5: 2,
+  });
   const [usageLimitType, setUsageLimitType] = useState<'single' | 'limited' | 'unlimited'>('limited');
   const [maxTotalUses, setMaxTotalUses] = useState<number>(10);
   const [maxUsesPerUser, setMaxUsesPerUser] = useState<number>(1);
@@ -402,13 +408,24 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
       return;
     }
 
-    if (packQuantity < 1) {
-      setFormError('La cantidad de sobres debe ser al menos 1.');
-      return;
+    const totalPoolPacks = (packPool.pack_1 || 0) + (packPool.pack_3 || 0) + (packPool.pack_5 || 0);
+
+    if (packType === 'multi') {
+      if (totalPoolPacks < 1) {
+        setFormError('Debes asignar al menos 1 sobre en total a la bolsa de multisobres.');
+        return;
+      }
+    } else {
+      if (packQuantity < 1) {
+        setFormError('La cantidad de sobres debe ser al menos 1.');
+        return;
+      }
     }
 
     let calculatedMaxTotal: number | null = null;
-    if (usageLimitType === 'single') {
+    if (packType === 'multi') {
+      calculatedMaxTotal = totalPoolPacks;
+    } else if (usageLimitType === 'single') {
       calculatedMaxTotal = 1;
     } else if (usageLimitType === 'limited') {
       calculatedMaxTotal = Math.max(1, maxTotalUses);
@@ -421,7 +438,8 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
       await createGiftCode({
         code: clean,
         pack_type: packType,
-        pack_quantity: packQuantity,
+        pack_quantity: packType === 'multi' ? 1 : packQuantity,
+        pack_pool: packType === 'multi' ? packPool : undefined,
         max_total_uses: calculatedMaxTotal,
         max_uses_per_user: Math.max(1, maxUsesPerUser),
         description: description.trim() || undefined,
@@ -432,6 +450,7 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
       setCodeWord('');
       setDescription('');
       setPackQuantity(1);
+      setPackPool({ pack_1: 5, pack_3: 5, pack_5: 2 });
       setPackType('pack_3');
       setUsageLimitType('limited');
       setMaxTotalUses(10);
@@ -494,8 +513,14 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
   const activeCodesCount = codes.filter((c) => c.is_active && !c.is_exhausted).length;
   const totalRedemptionsCount = codes.reduce((acc, c) => acc + c.total_used, 0);
 
-  const getPackLabel = (type: PackType, qty: number) => {
-    const nameMap: Record<PackType, string> = {
+  const getPackLabel = (type: PackType, qty: number, pool?: PackPool) => {
+    if (type === 'multi' || pool) {
+      if (pool) {
+        return `Multisobres (${pool.pack_1}x 1c, ${pool.pack_3}x 3c, ${pool.pack_5}x 5c)`;
+      }
+      return 'Multisobres Aleatorios';
+    }
+    const nameMap: Record<string, string> = {
       pack_1: 'Sobre de 1 Carta',
       pack_3: 'Sobre de 3 Cartas',
       pack_5: 'Sobre de 5 Cartas',
@@ -505,12 +530,16 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
 
   const getPackColor = (type: PackType) => {
     switch (type) {
+      case 'multi':
+        return 'from-fuchsia-600 via-purple-600 to-indigo-600 border-fuchsia-500/50 text-fuchsia-200';
       case 'pack_1':
         return 'from-blue-600 to-cyan-600 border-cyan-500/40 text-cyan-300';
       case 'pack_3':
         return 'from-purple-600 to-pink-600 border-pink-500/40 text-pink-300';
       case 'pack_5':
         return 'from-amber-600 to-orange-600 border-amber-500/40 text-amber-300';
+      default:
+        return 'from-slate-700 to-slate-800 border-slate-600 text-slate-300';
     }
   };
 
@@ -609,7 +638,7 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
               <label className="block text-xs font-bold text-slate-300 mb-2">
                 Tipo de Sobre a Regalar *
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={() => setPackType('pack_1')}
@@ -651,119 +680,339 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                   <span className="text-xs font-bold leading-tight">5 Cartas</span>
                   <span className="text-[9px] text-slate-400">Premium</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPackType('multi')}
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5 ${
+                    packType === 'multi'
+                      ? 'bg-fuchsia-950/70 border-fuchsia-500 text-white shadow-[0_0_18px_rgba(217,70,239,0.35)]'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  <Sparkles className={`w-5 h-5 ${packType === 'multi' ? 'text-fuchsia-400' : 'text-slate-500'}`} />
+                  <span className="text-xs font-bold leading-tight">Multisobres</span>
+                  <span className="text-[9px] text-fuchsia-400/90 font-medium">🎲 Aleatorio</span>
+                </button>
               </div>
             </div>
 
-            {/* Field 3: Pack Quantity */}
-            <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                Cantidad de Sobres Otorgados *
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={packQuantity}
-                  onChange={(e) => setPackQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-24 bg-slate-950 border border-slate-700 rounded-2xl px-4 py-2.5 text-sm font-mono font-bold text-white text-center focus:outline-none focus:border-emerald-500"
-                  required
-                />
-                <div className="flex gap-1.5">
-                  {[1, 2, 3, 5, 10].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setPackQuantity(num)}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
-                        packQuantity === num
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                      }`}
-                    >
-                      +{num}
-                    </button>
-                  ))}
+            {/* Field 3: Pack Quantity or Multi-pack Pool */}
+            {packType === 'multi' ? (
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-fuchsia-950/40 via-purple-950/30 to-slate-950/80 border border-fuchsia-500/30 space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <label className="block text-xs font-black text-fuchsia-300 tracking-wide uppercase">
+                      Configuración de Multisobres (Bolsa Aleatoria) *
+                    </label>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Define cuántos sobres de cada tipo tendrá la bolsa vinculada a este código.
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-mono font-bold text-fuchsia-300 bg-fuchsia-950/90 border border-fuchsia-500/50 px-3 py-1 rounded-xl shadow-sm">
+                      Total: {(packPool.pack_1 || 0) + (packPool.pack_3 || 0) + (packPool.pack_5 || 0)} sobres
+                    </span>
+                  </div>
                 </div>
+
+                {/* 3 Pack Tiers */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* 1 Carta */}
+                  <div className="p-3 rounded-xl bg-slate-950/80 border border-cyan-500/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                        <Package className="w-4 h-4 text-cyan-400" /> 1 Carta
+                      </span>
+                      <span className="text-[10px] text-cyan-400/70 font-mono">Básico</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPackPool((prev) => ({ ...prev, pack_1: Math.max(0, (prev.pack_1 || 0) - 1) }))}
+                        className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center cursor-pointer transition-colors"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        max="1000"
+                        value={packPool.pack_1}
+                        onChange={(e) => setPackPool((prev) => ({ ...prev, pack_1: Math.max(0, parseInt(e.target.value) || 0) }))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-center text-white focus:outline-none focus:border-cyan-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPackPool((prev) => ({ ...prev, pack_1: (prev.pack_1 || 0) + 1 }))}
+                        className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center cursor-pointer transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="flex gap-1">
+                      {[1, 5, 10].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setPackPool((prev) => ({ ...prev, pack_1: (prev.pack_1 || 0) + n }))}
+                          className="flex-1 py-1 rounded-md text-[10px] font-bold bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-800/60 cursor-pointer"
+                        >
+                          +{n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3 Cartas */}
+                  <div className="p-3 rounded-xl bg-slate-950/80 border border-pink-500/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
+                        <Package className="w-4 h-4 text-pink-400" /> 3 Cartas
+                      </span>
+                      <span className="text-[10px] text-pink-400/70 font-mono">Estándar</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPackPool((prev) => ({ ...prev, pack_3: Math.max(0, (prev.pack_3 || 0) - 1) }))}
+                        className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center cursor-pointer transition-colors"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        max="1000"
+                        value={packPool.pack_3}
+                        onChange={(e) => setPackPool((prev) => ({ ...prev, pack_3: Math.max(0, parseInt(e.target.value) || 0) }))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-center text-white focus:outline-none focus:border-pink-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPackPool((prev) => ({ ...prev, pack_3: (prev.pack_3 || 0) + 1 }))}
+                        className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center cursor-pointer transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="flex gap-1">
+                      {[1, 5, 10].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setPackPool((prev) => ({ ...prev, pack_3: (prev.pack_3 || 0) + n }))}
+                          className="flex-1 py-1 rounded-md text-[10px] font-bold bg-pink-950/60 hover:bg-pink-900/60 text-pink-300 border border-pink-800/60 cursor-pointer"
+                        >
+                          +{n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 5 Cartas */}
+                  <div className="p-3 rounded-xl bg-slate-950/80 border border-amber-500/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                        <Package className="w-4 h-4 text-amber-400" /> 5 Cartas
+                      </span>
+                      <span className="text-[10px] text-amber-400/70 font-mono">Premium</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPackPool((prev) => ({ ...prev, pack_5: Math.max(0, (prev.pack_5 || 0) - 1) }))}
+                        className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center cursor-pointer transition-colors"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        max="1000"
+                        value={packPool.pack_5}
+                        onChange={(e) => setPackPool((prev) => ({ ...prev, pack_5: Math.max(0, parseInt(e.target.value) || 0) }))}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-center text-white focus:outline-none focus:border-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPackPool((prev) => ({ ...prev, pack_5: (prev.pack_5 || 0) + 1 }))}
+                        className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center cursor-pointer transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="flex gap-1">
+                      {[1, 5, 10].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setPackPool((prev) => ({ ...prev, pack_5: (prev.pack_5 || 0) + n }))}
+                          className="flex-1 py-1 rounded-md text-[10px] font-bold bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 border border-amber-800/60 cursor-pointer"
+                        >
+                          +{n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pool Probabilities & Details */}
+                {(() => {
+                  const total = (packPool.pack_1 || 0) + (packPool.pack_3 || 0) + (packPool.pack_5 || 0);
+                  return (
+                    <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
+                      <span className="text-slate-400">
+                        🎲 Probabilidades iniciales de la bolsa:
+                      </span>
+                      <div className="flex items-center gap-2 flex-wrap font-mono">
+                        <span className="text-cyan-400 font-bold">
+                          1c: {total > 0 ? (((packPool.pack_1 || 0) / total) * 100).toFixed(1) : 0}%
+                        </span>
+                        <span className="text-slate-600">|</span>
+                        <span className="text-pink-400 font-bold">
+                          3c: {total > 0 ? (((packPool.pack_3 || 0) / total) * 100).toFixed(1) : 0}%
+                        </span>
+                        <span className="text-slate-600">|</span>
+                        <span className="text-amber-400 font-bold">
+                          5c: {total > 0 ? (((packPool.pack_5 || 0) / total) * 100).toFixed(1) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <p className="text-[10px] text-slate-500 italic">
+                  💡 A cada usuario que canjee el código le tocará un sobre al azar entre los disponibles de la bolsa.
+                </p>
               </div>
-              <p className="text-[10px] text-slate-500 mt-1">
-                Al canjear el código, el usuario recibirá exactamente esta cantidad del sobre seleccionado.
-              </p>
-            </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Cantidad de Sobres Otorgados *
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={packQuantity}
+                    onChange={(e) => setPackQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-24 bg-slate-950 border border-slate-700 rounded-2xl px-4 py-2.5 text-sm font-mono font-bold text-white text-center focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                  <div className="flex gap-1.5">
+                    {[1, 2, 3, 5, 10].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setPackQuantity(num)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
+                          packQuantity === num
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        +{num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Al canjear el código, el usuario recibirá exactamente esta cantidad del sobre seleccionado.
+                </p>
+              </div>
+            )}
 
             {/* Field 4: Usage Limit Options */}
-            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
-              <label className="block text-xs font-bold text-slate-200">
-                Opciones de Límite de Uso Global *
-              </label>
-
-              <div className="space-y-2">
-                {/* Single use */}
-                <label className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 cursor-pointer transition-colors">
-                  <input
-                    type="radio"
-                    name="usageLimit"
-                    checked={usageLimitType === 'single'}
-                    onChange={() => setUsageLimitType('single')}
-                    className="w-4 h-4 text-emerald-500 focus:ring-emerald-500 accent-emerald-500"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-white block">Uso Único (1 solo canje en total)</span>
-                    <span className="text-[10px] text-slate-400">
-                      El primer usuario que lo ingrese se lleva el premio y el código se agota de inmediato.
-                    </span>
-                  </div>
-                </label>
-
-                {/* Multiple limited uses */}
-                <label className="flex items-start gap-3 p-2.5 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 cursor-pointer transition-colors">
-                  <input
-                    type="radio"
-                    name="usageLimit"
-                    checked={usageLimitType === 'limited'}
-                    onChange={() => setUsageLimitType('limited')}
-                    className="w-4 h-4 text-emerald-500 focus:ring-emerald-500 accent-emerald-500 mt-0.5"
-                  />
-                  <div className="flex-1">
-                    <span className="text-xs font-bold text-white block">Cantidad de Usos (Límite total)</span>
-                    <span className="text-[10px] text-slate-400 block mb-2">
-                      El código se podrá canjear hasta alcanzar este número total de veces.
-                    </span>
-                    {usageLimitType === 'limited' && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-400">Máximo total:</span>
-                        <input
-                          type="number"
-                          min="1"
-                          max="99999"
-                          value={maxTotalUses}
-                          onChange={(e) => setMaxTotalUses(Math.max(1, parseInt(e.target.value) || 1))}
-                          className="w-24 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-white text-center focus:outline-none focus:border-emerald-500"
-                        />
-                        <span className="text-[11px] text-slate-400">canjes</span>
-                      </div>
-                    )}
-                  </div>
-                </label>
-
-                {/* Unlimited uses */}
-                <label className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 cursor-pointer transition-colors">
-                  <input
-                    type="radio"
-                    name="usageLimit"
-                    checked={usageLimitType === 'unlimited'}
-                    onChange={() => setUsageLimitType('unlimited')}
-                    className="w-4 h-4 text-emerald-500 focus:ring-emerald-500 accent-emerald-500"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-white block">Ilimitado</span>
-                    <span className="text-[10px] text-slate-400">
-                      Sin límite global de canjes (ideal para eventos masivos o bienvenida).
-                    </span>
-                  </div>
-                </label>
+            {packType === 'multi' ? (
+              <div className="p-4 rounded-2xl bg-slate-950/60 border border-fuchsia-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-xs font-bold text-white block">
+                    Límite de Uso Global (Fijado por la Bolsa de Sobres)
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    El código tendrá exactamente {(packPool.pack_1 || 0) + (packPool.pack_3 || 0) + (packPool.pack_5 || 0)} usos totales. Al entregarse todos los sobres, el código se agotará automáticamente.
+                  </span>
+                </div>
+                <span className="px-3 py-1.5 rounded-xl bg-fuchsia-950/80 border border-fuchsia-500/40 text-fuchsia-300 font-mono font-bold text-xs shrink-0 self-start sm:self-auto">
+                  {(packPool.pack_1 || 0) + (packPool.pack_3 || 0) + (packPool.pack_5 || 0)} canjes totales
+                </span>
               </div>
-            </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+                <label className="block text-xs font-bold text-slate-200">
+                  Opciones de Límite de Uso Global *
+                </label>
+
+                <div className="space-y-2">
+                  {/* Single use */}
+                  <label className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="usageLimit"
+                      checked={usageLimitType === 'single'}
+                      onChange={() => setUsageLimitType('single')}
+                      className="w-4 h-4 text-emerald-500 focus:ring-emerald-500 accent-emerald-500"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-white block">Uso Único (1 solo canje en total)</span>
+                      <span className="text-[10px] text-slate-400">
+                        El primer usuario que lo ingrese se lleva el premio y el código se agota de inmediato.
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Multiple limited uses */}
+                  <label className="flex items-start gap-3 p-2.5 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="usageLimit"
+                      checked={usageLimitType === 'limited'}
+                      onChange={() => setUsageLimitType('limited')}
+                      className="w-4 h-4 text-emerald-500 focus:ring-emerald-500 accent-emerald-500 mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <span className="text-xs font-bold text-white block">Cantidad de Usos (Límite total)</span>
+                      <span className="text-[10px] text-slate-400 block mb-2">
+                        El código se podrá canjear hasta alcanzar este número total de veces.
+                      </span>
+                      {usageLimitType === 'limited' && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-slate-400">Máximo total:</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="99999"
+                            value={maxTotalUses}
+                            onChange={(e) => setMaxTotalUses(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-24 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-white text-center focus:outline-none focus:border-emerald-500"
+                          />
+                          <span className="text-[11px] text-slate-400">canjes</span>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+
+                  {/* Unlimited uses */}
+                  <label className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="usageLimit"
+                      checked={usageLimitType === 'unlimited'}
+                      onChange={() => setUsageLimitType('unlimited')}
+                      className="w-4 h-4 text-emerald-500 focus:ring-emerald-500 accent-emerald-500"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-white block">Ilimitado</span>
+                      <span className="text-[10px] text-slate-400">
+                        Sin límite global de canjes (ideal para eventos masivos o bienvenida).
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            )}
 
             {/* Field 5: Limit per user */}
             <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
@@ -920,131 +1169,152 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                         : 'border-slate-800 hover:border-emerald-500/40'
                     }`}
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      {/* Left: Code badge and info */}
+                    {/* Top Row: Code, Copy & Status */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="p-2 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
                           <Ticket className={`w-4 h-4 ${code.is_active && !code.is_exhausted ? 'text-emerald-400' : 'text-slate-500'}`} />
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-nowrap">
-                            <span className="font-mono font-black text-sm sm:text-base text-white tracking-wider whitespace-nowrap select-all">
-                              {code.code}
-                            </span>
-                            <button
-                              onClick={() => handleCopyCode(code.code, code.id)}
-                              title="Copiar código al portapapeles"
-                              className="p-1 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-                            >
-                              {copiedCodeId === code.id ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                              ) : (
-                                <Copy className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-
-                            {/* Status badge */}
-                            {!code.is_active ? (
-                              <span className="text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-0.5 rounded-full border border-slate-700 whitespace-nowrap shrink-0">
-                                PAUSADO
-                              </span>
-                            ) : code.is_exhausted ? (
-                              <span className="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-2 py-0.5 rounded-full border border-amber-500/40 whitespace-nowrap shrink-0">
-                                AGOTADO
-                              </span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-black text-sm sm:text-base text-white tracking-wider whitespace-nowrap select-all">
+                            {code.code}
+                          </span>
+                          <button
+                            onClick={() => handleCopyCode(code.code, code.id)}
+                            title="Copiar código al portapapeles"
+                            className="p-1 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                          >
+                            {copiedCodeId === code.id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
                             ) : (
-                              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/40 whitespace-nowrap shrink-0">
-                                ACTIVO
-                              </span>
+                              <Copy className="w-3.5 h-3.5" />
                             )}
-                          </div>
+                          </button>
 
-                          {code.description && (
-                            <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-xs">{code.description}</p>
+                          {/* Status badge */}
+                          {!code.is_active ? (
+                            <span className="text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-0.5 rounded-full border border-slate-700 whitespace-nowrap shrink-0">
+                              PAUSADO
+                            </span>
+                          ) : code.is_exhausted ? (
+                            <span className="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-2 py-0.5 rounded-full border border-amber-500/40 whitespace-nowrap shrink-0">
+                              AGOTADO
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/40 whitespace-nowrap shrink-0">
+                              ACTIVO
+                            </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Right: Compact Share Buttons & Reward Pill */}
-                      {(() => {
-                        const isWhatsAppShared = Boolean(code.shared_whatsapp || publishedWhatsAppCodes.has(code.id));
-                        const isDiscordShared = Boolean(code.shared_discord || publishedCodes.has(code.id));
-
-                        return (
-                          <div className="flex items-center gap-2 shrink-0 justify-end flex-wrap sm:flex-nowrap">
-                            {/* Botón WhatsApp */}
-                            <button
-                              type="button"
-                              onClick={() => handleShareWhatsApp(code)}
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                handleToggleShare(code, 'whatsapp');
-                              }}
-                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 shrink-0 whitespace-nowrap ${
-                                isWhatsAppShared
-                                  ? 'bg-[#25D366]/20 text-emerald-300 border border-[#25D366]/40 hover:bg-[#25D366]/30'
-                                  : 'bg-[#25D366] hover:bg-[#20ba5c] text-white border border-[#25D366]/80 shadow-[0_0_10px_rgba(37,211,102,0.3)]'
-                              }`}
-                              title={
-                                isWhatsAppShared
-                                  ? `Compartido en Canal WhatsApp${code.shared_whatsapp_at ? ` (${new Date(code.shared_whatsapp_at).toLocaleDateString()})` : ''} (Clic para copiar mensaje, Clic derecho para desmarcar)`
-                                  : 'Copiar mensaje para publicar en tu Canal de WhatsApp (sin redirigir)'
-                              }
-                            >
-                              {isWhatsAppShared ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-300" />
-                              ) : (
-                                <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
-                              )}
-                              <span>
-                                {isWhatsAppShared ? 'Compartido' : 'Canal WhatsApp'}
-                              </span>
-                            </button>
-
-                            {/* Botón Discord */}
-                            <button
-                              type="button"
-                              onClick={() => handlePublishToDiscord(code)}
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                handleToggleShare(code, 'discord');
-                              }}
-                              disabled={publishingCodeId === code.id}
-                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap ${
-                                isDiscordShared
-                                  ? 'bg-[#5865F2]/20 text-[#a5b4fc] border border-[#5865F2]/40 hover:bg-[#5865F2]/30'
-                                  : 'bg-[#5865F2] hover:bg-[#4752C4] text-white border border-[#5865F2]/80 shadow-[0_0_10px_rgba(88,101,242,0.3)]'
-                              }`}
-                              title={
-                                isDiscordShared
-                                  ? `Publicado en Discord${code.shared_discord_at ? ` (${new Date(code.shared_discord_at).toLocaleDateString()})` : ''} (Clic para volver a enviar, Clic derecho para desmarcar)`
-                                  : 'Publicar este código de regalo directamente en Discord'
-                              }
-                            >
-                              {publishingCodeId === code.id ? (
-                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                              ) : isDiscordShared ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-300" />
-                              ) : (
-                                <DiscordIcon className="w-3.5 h-3.5 text-white" />
-                              )}
-                              <span>
-                                {publishingCodeId === code.id
-                                  ? 'Enviando...'
-                                  : isDiscordShared
-                                  ? 'Publicado'
-                                  : 'Discord'}
-                              </span>
-                            </button>
-
-                            {/* Burbuja del tipo de sobre */}
-                            <span className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border bg-gradient-to-r shrink-0 whitespace-nowrap ${getPackColor(code.pack_type)}`}>
-                              🎁 {getPackLabel(code.pack_type, code.pack_quantity)}
-                            </span>
-                          </div>
-                        );
-                      })()}
+                      {code.description && (
+                        <span className="text-[11px] text-slate-400 italic truncate max-w-sm">
+                          {code.description}
+                        </span>
+                      )}
                     </div>
+
+                    {/* Middle Row: Burbujas abajo del código (Tipo de sobre, Discord, WhatsApp) */}
+                    {(() => {
+                      const isWhatsAppShared = Boolean(code.shared_whatsapp || publishedWhatsAppCodes.has(code.id));
+                      const isDiscordShared = Boolean(code.shared_discord || publishedCodes.has(code.id));
+
+                      return (
+                        <div className="mt-3 flex items-center gap-2 flex-wrap">
+                          {/* Burbuja del tipo de sobre */}
+                          <span className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border bg-gradient-to-r shrink-0 whitespace-nowrap shadow-sm ${getPackColor(code.pack_type)}`}>
+                            {code.pack_type === 'multi' ? '🎲' : '🎁'} {getPackLabel(code.pack_type, code.pack_quantity, code.pack_pool)}
+                          </span>
+
+                          {/* Botón Discord */}
+                          <button
+                            type="button"
+                            onClick={() => handlePublishToDiscord(code)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              handleToggleShare(code, 'discord');
+                            }}
+                            disabled={publishingCodeId === code.id}
+                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap ${
+                              isDiscordShared
+                                ? 'bg-[#5865F2]/20 text-[#a5b4fc] border border-[#5865F2]/40 hover:bg-[#5865F2]/30'
+                                : 'bg-[#5865F2] hover:bg-[#4752C4] text-white border border-[#5865F2]/80 shadow-[0_0_10px_rgba(88,101,242,0.3)]'
+                            }`}
+                            title={
+                              isDiscordShared
+                                ? `Publicado en Discord${code.shared_discord_at ? ` (${new Date(code.shared_discord_at).toLocaleDateString()})` : ''} (Clic para volver a enviar, Clic derecho para desmarcar)`
+                                : 'Publicar este código de regalo directamente en Discord'
+                            }
+                          >
+                            {publishingCodeId === code.id ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            ) : isDiscordShared ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-300" />
+                            ) : (
+                              <DiscordIcon className="w-3.5 h-3.5 text-white" />
+                            )}
+                            <span>
+                              {publishingCodeId === code.id
+                                ? 'Enviando...'
+                                : isDiscordShared
+                                ? 'Publicado'
+                                : 'Discord'}
+                            </span>
+                          </button>
+
+                          {/* Botón WhatsApp */}
+                          <button
+                            type="button"
+                            onClick={() => handleShareWhatsApp(code)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              handleToggleShare(code, 'whatsapp');
+                            }}
+                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm select-none active:scale-95 shrink-0 whitespace-nowrap ${
+                              isWhatsAppShared
+                                ? 'bg-[#25D366]/20 text-emerald-300 border border-[#25D366]/40 hover:bg-[#25D366]/30'
+                                : 'bg-[#25D366] hover:bg-[#20ba5c] text-white border border-[#25D366]/80 shadow-[0_0_10px_rgba(37,211,102,0.3)]'
+                            }`}
+                            title={
+                              isWhatsAppShared
+                                ? `Compartido en Canal WhatsApp${code.shared_whatsapp_at ? ` (${new Date(code.shared_whatsapp_at).toLocaleDateString()})` : ''} (Clic para copiar mensaje, Clic derecho para desmarcar)`
+                                : 'Copiar mensaje para publicar en tu Canal de WhatsApp (sin redirigir)'
+                            }
+                          >
+                            {isWhatsAppShared ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-300" />
+                            ) : (
+                              <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
+                            )}
+                            <span>
+                              {isWhatsAppShared ? 'Compartido' : 'Canal WhatsApp'}
+                            </span>
+                          </button>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Desglose de bolsa si es multisobres */}
+                    {code.pack_type === 'multi' && code.pack_pool && (
+                      <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center gap-2 flex-wrap text-[11px]">
+                        <span className="text-slate-400 font-medium">Bolsa restante:</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-cyan-950/70 border border-cyan-500/30 text-cyan-300 font-mono">
+                          1 Carta: <strong>{code.pool_stats ? code.pool_stats.pack_1_remaining : code.pack_pool.pack_1}</strong>/{code.pack_pool.pack_1}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-lg bg-pink-950/70 border border-pink-500/30 text-pink-300 font-mono">
+                          3 Cartas: <strong>{code.pool_stats ? code.pool_stats.pack_3_remaining : code.pack_pool.pack_3}</strong>/{code.pack_pool.pack_3}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-950/70 border border-amber-500/30 text-amber-300 font-mono">
+                          5 Cartas: <strong>{code.pool_stats ? code.pool_stats.pack_5_remaining : code.pack_pool.pack_5}</strong>/{code.pack_pool.pack_5}
+                        </span>
+                        {code.pool_stats && (
+                          <span className={`font-mono font-bold ml-auto text-[10px] ${code.pool_stats.total_remaining === 0 ? 'text-amber-400' : 'text-fuchsia-300'}`}>
+                            {code.pool_stats.total_remaining === 0 ? '¡Bolsa agotada!' : `${code.pool_stats.total_remaining} sobres disponibles`}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Progress & Metrics */}
                     <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
@@ -1170,7 +1440,7 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
             </div>
 
             <div className="text-xs text-slate-400 flex items-center justify-between">
-              <span>Premio: <strong className="text-white">{getPackLabel(selectedCodeForHistory.pack_type, selectedCodeForHistory.pack_quantity)}</strong></span>
+              <span>Premio: <strong className="text-white">{getPackLabel(selectedCodeForHistory.pack_type, selectedCodeForHistory.pack_quantity, selectedCodeForHistory.pack_pool)}</strong></span>
               <span>Total Canjeados: <strong className="text-emerald-400 font-mono">{selectedCodeForHistory.total_used}</strong></span>
             </div>
 
@@ -1204,8 +1474,16 @@ export const GiftCodesView: React.FC<GiftCodesViewProps> = ({ onShowToast }) => 
                         {new Date(r.redeemed_at).toLocaleDateString()} {new Date(r.redeemed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       <span className="text-[10px] text-emerald-400 font-bold block">
-                        +{selectedCodeForHistory.pack_quantity * (r.count || 1)} {(selectedCodeForHistory.pack_quantity * (r.count || 1)) === 1 ? 'Sobre' : 'Sobres'}
-                        {(r.count || 1) > 1 ? ` (${r.count} canjes)` : ''}
+                        {r.awarded_pack ? (
+                          <span className="text-pink-300 font-bold">
+                            🎁 {getPackLabel(r.awarded_pack, 1)}
+                          </span>
+                        ) : (
+                          <>
+                            +{selectedCodeForHistory.pack_quantity * (r.count || 1)} {(selectedCodeForHistory.pack_quantity * (r.count || 1)) === 1 ? 'Sobre' : 'Sobres'}
+                            {(r.count || 1) > 1 ? ` (${r.count} canjes)` : ''}
+                          </>
+                        )}
                       </span>
                     </div>
                   </div>

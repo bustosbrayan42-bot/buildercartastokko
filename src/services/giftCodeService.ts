@@ -2,13 +2,20 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { supabaseAuth } from '../utils/authSupabaseClient';
 import { getR2Config } from '../utils/r2Storage';
 
-export type PackType = 'pack_1' | 'pack_3' | 'pack_5';
+export type PackType = 'pack_1' | 'pack_3' | 'pack_5' | 'multi';
+
+export interface PackPool {
+  pack_1: number;
+  pack_3: number;
+  pack_5: number;
+}
 
 export interface GiftCode {
   id: string;
   code: string;
   pack_type: PackType;
   pack_quantity: number;
+  pack_pool?: PackPool; // For multi-pack codes
   max_total_uses: number | null; // null = unlimited, 1 = single-use, N = limited
   max_uses_per_user: number; // default 1
   is_active: boolean;
@@ -29,12 +36,22 @@ export interface CodeRedemptionRecord {
   avatar_url?: string;
   redeemed_at: string;
   count: number;
+  awarded_pack?: 'pack_1' | 'pack_3' | 'pack_5';
 }
 
 export interface GiftCodeWithStats extends GiftCode {
   total_used: number;
   is_exhausted: boolean;
   redemptions: CodeRedemptionRecord[];
+  pool_stats?: {
+    pack_1_used: number;
+    pack_1_remaining: number;
+    pack_3_used: number;
+    pack_3_remaining: number;
+    pack_5_used: number;
+    pack_5_remaining: number;
+    total_remaining: number;
+  };
 }
 
 const R2_GIFT_CODES_KEY = 'gift_codes.json';
@@ -140,9 +157,12 @@ export const fetchAllRedemptions = async (): Promise<Map<string, CodeRedemptionR
 
     // 3. Map into redemptions
     logs.forEach((log) => {
-      // card_id format is "GIFT_CODE:<CODE>"
+      // card_id format is "GIFT_CODE:<CODE>" or "GIFT_CODE:<CODE>:<PACK_TYPE>"
       if (log.card_id && log.card_id.startsWith('GIFT_CODE:')) {
-        const codeKey = log.card_id.replace('GIFT_CODE:', '').toUpperCase();
+        const rawRest = log.card_id.replace('GIFT_CODE:', '');
+        const colonIndex = rawRest.indexOf(':');
+        const codeKey = (colonIndex === -1 ? rawRest : rawRest.slice(0, colonIndex)).toUpperCase();
+        const awardedPack = colonIndex === -1 ? undefined : (rawRest.slice(colonIndex + 1) as 'pack_1' | 'pack_3' | 'pack_5');
         const prof = profileMap.get(log.user_id);
 
         const record: CodeRedemptionRecord = {
@@ -153,6 +173,7 @@ export const fetchAllRedemptions = async (): Promise<Map<string, CodeRedemptionR
           avatar_url: prof?.avatar_url || '',
           redeemed_at: log.obtained_at,
           count: log.count || 1,
+          awarded_pack: awardedPack,
         };
 
         if (!redemptionsMap.has(codeKey)) {
@@ -181,13 +202,48 @@ export const fetchGiftCodesWithStats = async (): Promise<GiftCodeWithStats[]> =>
     const codeKey = code.code.toUpperCase();
     const redemptions = redemptionsMap.get(codeKey) || [];
     const total_used = redemptions.reduce((acc, r) => acc + (r.count || 1), 0);
-    const is_exhausted = code.max_total_uses !== null && total_used >= code.max_total_uses;
+
+    let pool_stats;
+    let is_exhausted = false;
+
+    if (code.pack_type === 'multi' && code.pack_pool) {
+      let p1Used = 0;
+      let p3Used = 0;
+      let p5Used = 0;
+
+      redemptions.forEach((r) => {
+        const cnt = r.count || 1;
+        if (r.awarded_pack === 'pack_1') p1Used += cnt;
+        else if (r.awarded_pack === 'pack_3') p3Used += cnt;
+        else if (r.awarded_pack === 'pack_5') p5Used += cnt;
+      });
+
+      const p1Rem = Math.max(0, (code.pack_pool.pack_1 || 0) - p1Used);
+      const p3Rem = Math.max(0, (code.pack_pool.pack_3 || 0) - p3Used);
+      const p5Rem = Math.max(0, (code.pack_pool.pack_5 || 0) - p5Used);
+      const totalRem = p1Rem + p3Rem + p5Rem;
+
+      pool_stats = {
+        pack_1_used: p1Used,
+        pack_1_remaining: p1Rem,
+        pack_3_used: p3Used,
+        pack_3_remaining: p3Rem,
+        pack_5_used: p5Used,
+        pack_5_remaining: p5Rem,
+        total_remaining: totalRem,
+      };
+
+      is_exhausted = totalRem <= 0;
+    } else {
+      is_exhausted = code.max_total_uses !== null && total_used >= code.max_total_uses;
+    }
 
     return {
       ...code,
       total_used,
       is_exhausted,
       redemptions,
+      pool_stats,
     };
   });
 };
@@ -199,6 +255,7 @@ export const createGiftCode = async (params: {
   code: string;
   pack_type: PackType;
   pack_quantity: number;
+  pack_pool?: PackPool;
   max_total_uses: number | null;
   max_uses_per_user: number;
   description?: string;
@@ -214,12 +271,32 @@ export const createGiftCode = async (params: {
     throw new Error(`El código "${cleanCode}" ya existe. Elige otro nombre o código.`);
   }
 
+  let finalMaxTotal = params.max_total_uses;
+  let finalPackQty = params.pack_quantity;
+  let finalPool: PackPool | undefined = undefined;
+
+  if (params.pack_type === 'multi') {
+    const p1 = Math.max(0, Math.floor(params.pack_pool?.pack_1 || 0));
+    const p3 = Math.max(0, Math.floor(params.pack_pool?.pack_3 || 0));
+    const p5 = Math.max(0, Math.floor(params.pack_pool?.pack_5 || 0));
+    const totalPacks = p1 + p3 + p5;
+
+    if (totalPacks < 1) {
+      throw new Error('Debes asignar al menos 1 sobre en total a la bolsa de multisobres.');
+    }
+
+    finalPool = { pack_1: p1, pack_3: p3, pack_5: p5 };
+    finalPackQty = 1; // Cada canje otorga 1 sobre aleatorio de la bolsa
+    finalMaxTotal = totalPacks; // El total de usos corresponde al total de sobres
+  }
+
   const newCode: GiftCode = {
     id: `code_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     code: cleanCode,
     pack_type: params.pack_type,
-    pack_quantity: Math.max(1, Math.floor(params.pack_quantity)),
-    max_total_uses: params.max_total_uses === null ? null : Math.max(1, Math.floor(params.max_total_uses)),
+    pack_quantity: Math.max(1, Math.floor(finalPackQty)),
+    pack_pool: finalPool,
+    max_total_uses: finalMaxTotal === null ? null : Math.max(1, Math.floor(finalMaxTotal)),
     max_uses_per_user: Math.max(1, Math.floor(params.max_uses_per_user || 1)),
     is_active: true,
     created_at: new Date().toISOString(),

@@ -104,7 +104,13 @@ export const getWhatsAppChannelDestinationUrl = (customChannelUrl?: string): str
 /**
  * Format badge/label for card packs.
  */
-export const getPackBadgeLabel = (packType: string, quantity: number): string => {
+export const getPackBadgeLabel = (packType: string, quantity: number, packPool?: { pack_1: number; pack_3: number; pack_5: number }): string => {
+  if (packType === 'multi' || packPool) {
+    const p1 = packPool?.pack_1 || 0;
+    const p3 = packPool?.pack_3 || 0;
+    const p5 = packPool?.pack_5 || 0;
+    return `🎲 Multisobres Sorpresa (Pool: ${p1}x 1c, ${p3}x 3c, ${p5}x 5c)`;
+  }
   if (packType === 'pack_1') {
     return `${quantity}x Sobre de 1 Carta (Básico)`;
   }
@@ -124,7 +130,7 @@ export const formatWhatsAppMessage = (
   code: GiftCodeWithStats,
   customTemplate?: string
 ): string => {
-  const packLabel = getPackBadgeLabel(code.pack_type, code.pack_quantity);
+  const packLabel = getPackBadgeLabel(code.pack_type, code.pack_quantity, code.pack_pool);
 
   const totalUsesText =
     code.max_total_uses === null
