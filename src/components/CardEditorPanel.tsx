@@ -71,6 +71,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
     'super_rare',
     'ultra_rare',
     'secret_rare',
+    'golden_epic',
   ];
 
   const holoStyles: Array<{ id: HoloStyle; name: string }> = [
@@ -82,6 +83,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
     { id: 'secret_gold', name: 'Secret Gold Mythic' },
     { id: 'glitter', name: 'Holo Glitter Spark' },
     { id: 'wave', name: 'Wave Refraction' },
+    { id: 'golden_holo', name: 'Dorado Épico (Canje Único)' },
   ];
 
   const [isUploadingR2, setIsUploadingR2] = useState<boolean>(false);
@@ -862,7 +864,7 @@ export const CardEditorPanel: React.FC<CardEditorPanelProps> = ({
               <label className="text-xs font-bold text-slate-300 block">
                 Nivel de Rareza
               </label>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 p-2 bg-slate-950 rounded-2xl border border-slate-800">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 p-2 bg-slate-950 rounded-2xl border border-slate-800">
                 {rarities.map((r) => {
                   const cfg = activeRarityConfigs[r] || RARITY_CONFIGS[r];
                   const selected = card.rarity === r;

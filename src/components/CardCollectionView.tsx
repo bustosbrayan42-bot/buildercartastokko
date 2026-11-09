@@ -69,6 +69,7 @@ export const CardCollectionView: React.FC<CardCollectionViewProps> = ({
     'super_rare',
     'ultra_rare',
     'secret_rare',
+    'golden_epic',
   ];
 
   const elements: CardElement[] = [

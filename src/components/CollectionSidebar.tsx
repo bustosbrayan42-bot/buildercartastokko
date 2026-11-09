@@ -45,6 +45,7 @@ export const CollectionSidebar: React.FC<CollectionSidebarProps> = ({
     'super_rare',
     'ultra_rare',
     'secret_rare',
+    'golden_epic',
   ];
 
   const filteredCards = cards.filter((c) => {

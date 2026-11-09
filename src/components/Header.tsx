@@ -14,10 +14,11 @@ import {
   Ticket,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  Crown
 } from 'lucide-react';
 
-export type BuilderViewMode = 'card_builder' | 'pack_builder' | 'pack_management' | 'gift_cards' | 'gift_codes';
+export type BuilderViewMode = 'card_builder' | 'pack_builder' | 'pack_management' | 'gift_cards' | 'gift_codes' | 'tokkiipass';
 
 interface HeaderProps {
   currentView: BuilderViewMode;
@@ -49,6 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'pack_management': return 'Gestión';
       case 'gift_cards': return 'Regalar';
       case 'gift_codes': return 'Códigos';
+      case 'tokkiipass': return 'TokkiiPass';
     }
   };
 
@@ -98,69 +100,87 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* View Switch Tabs (Desktop: visible on lg and above - UNTOUCHED FOR PC) */}
-          <nav className="hidden lg:flex items-center gap-1 bg-slate-900/90 p-1 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar">
+          {/* View Switch Tabs (Desktop: visible on lg and above - Always fully visible without scrollbar) */}
+          <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-slate-800/90 shrink-0 shadow-inner">
             <button
               onClick={() => onViewChange('card_builder')}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 xl:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer whitespace-nowrap border ${
                 currentView === 'card_builder'
-                  ? 'bg-slate-800 text-amber-400 shadow border border-slate-700'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-amber-500/25 via-amber-600/20 to-yellow-500/20 text-amber-300 border-amber-400/80 shadow-[0_0_14px_rgba(245,158,11,0.35)] scale-[1.03] ring-1 ring-amber-400/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border-transparent'
               }`}
             >
-              <Layers className="w-4 h-4" />
+              <Layers className={`w-4 h-4 ${currentView === 'card_builder' ? 'text-amber-400' : 'text-slate-400'}`} />
               <span>Editor de Cartas</span>
-              <span className="text-[10px] px-1.5 rounded-full bg-slate-800 text-slate-300 font-mono">
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono border ${
+                  currentView === 'card_builder'
+                    ? 'bg-amber-400/20 border-amber-400/40 text-amber-200'
+                    : 'bg-slate-800 border-slate-700 text-slate-400'
+                }`}
+              >
                 {cardCount}
               </span>
             </button>
 
             <button
               onClick={() => onViewChange('pack_builder')}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 xl:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer whitespace-nowrap border ${
                 currentView === 'pack_builder'
-                  ? 'bg-slate-800 text-amber-400 shadow border border-slate-700'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-blue-600/30 via-indigo-600/25 to-blue-500/25 text-blue-300 border-blue-400/80 shadow-[0_0_14px_rgba(59,130,246,0.35)] scale-[1.03] ring-1 ring-blue-400/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border-transparent'
               }`}
             >
-              <Package className="w-4 h-4" />
+              <Package className={`w-4 h-4 ${currentView === 'pack_builder' ? 'text-blue-400' : 'text-slate-400'}`} />
               <span>Diseño de Sobres</span>
             </button>
 
             <button
               onClick={() => onViewChange('pack_management')}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 xl:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer whitespace-nowrap border ${
                 currentView === 'pack_management'
-                  ? 'bg-gradient-to-r from-purple-700 to-pink-700 text-white shadow border border-pink-500/50'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-purple-700 to-pink-700 text-white border-pink-400/90 shadow-[0_0_14px_rgba(236,72,153,0.4)] scale-[1.03] ring-1 ring-pink-400/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border-transparent'
               }`}
             >
-              <Send className="w-4 h-4 text-pink-400" />
+              <Send className={`w-4 h-4 ${currentView === 'pack_management' ? 'text-pink-200' : 'text-pink-400'}`} />
               <span>Gestión de Sobres</span>
             </button>
 
             <button
               onClick={() => onViewChange('gift_cards')}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 xl:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer whitespace-nowrap border ${
                 currentView === 'gift_cards'
-                  ? 'bg-gradient-to-r from-amber-600 to-pink-600 text-white shadow border border-amber-500/50'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-amber-600 to-pink-600 text-white border-amber-400/90 shadow-[0_0_14px_rgba(245,158,11,0.4)] scale-[1.03] ring-1 ring-amber-400/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border-transparent'
               }`}
             >
-              <Gift className="w-4 h-4 text-amber-400" />
+              <Gift className={`w-4 h-4 ${currentView === 'gift_cards' ? 'text-amber-200' : 'text-amber-400'}`} />
               <span>Regalar Cartas</span>
             </button>
 
             <button
               onClick={() => onViewChange('gift_codes')}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 xl:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer whitespace-nowrap border ${
                 currentView === 'gift_codes'
-                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white shadow border border-emerald-400/50'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white border-emerald-400/90 shadow-[0_0_14px_rgba(16,185,129,0.4)] scale-[1.03] ring-1 ring-emerald-400/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border-transparent'
               }`}
             >
-              <Ticket className="w-4 h-4 text-emerald-400" />
-              <span>Generar código de regalo</span>
+              <Ticket className={`w-4 h-4 ${currentView === 'gift_codes' ? 'text-emerald-200' : 'text-emerald-400'}`} />
+              <span>Códigos de Regalo</span>
+            </button>
+
+            <button
+              onClick={() => onViewChange('tokkiipass')}
+              className={`flex items-center gap-1.5 px-2.5 xl:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 shrink-0 cursor-pointer whitespace-nowrap border ${
+                currentView === 'tokkiipass'
+                  ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 font-black border-yellow-200 shadow-[0_0_16px_rgba(245,158,11,0.5)] scale-[1.03] ring-1 ring-amber-300'
+                  : 'text-amber-400 hover:text-amber-300 hover:bg-slate-800/60 border-transparent'
+              }`}
+            >
+              <Crown className={`w-4 h-4 ${currentView === 'tokkiipass' ? 'text-slate-950 fill-current' : 'text-amber-400'}`} />
+              <span>TokkiiPass</span>
             </button>
           </nav>
 
@@ -202,16 +222,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
-
-            <a
-              href="https://tcg.eviltokkii.online/Home"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition-colors"
-            >
-              <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">Visor Web</span>
-            </a>
           </div>
         </div>
       </header>
@@ -375,6 +385,24 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center gap-3">
                 <Ticket className="w-4 h-4 text-emerald-400" />
                 <span className="text-sm">Códigos de Regalo</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-600" />
+            </button>
+
+            <button
+              onClick={() => {
+                onViewChange('tokkiipass');
+                setIsMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
+                currentView === 'tokkiipass'
+                  ? 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 border-yellow-300 text-slate-950 font-black shadow-[0_0_15px_rgba(234,179,8,0.4)]'
+                  : 'bg-slate-900/60 border-slate-800 text-amber-400 hover:text-amber-300 hover:bg-slate-850'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Crown className="w-4 h-4 text-amber-400" />
+                <span className="text-sm">TokkiiPass Premium</span>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-600" />
             </button>

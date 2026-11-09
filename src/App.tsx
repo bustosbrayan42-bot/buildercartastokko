@@ -20,6 +20,7 @@ import { PackOpenerModal } from './components/PackOpenerModal';
 import { PackManagementView } from './components/PackManagementView';
 import { GiftCardsView } from './components/GiftCardsView';
 import { GiftCodesView } from './components/GiftCodesView';
+import { TokkiiPassAdminView } from './components/TokkiiPassAdminView';
 import { AdminLoginGate } from './components/AdminLoginGate';
 import { BatchImageExportModal } from './components/BatchImageExportModal';
 import {
@@ -293,6 +294,13 @@ export function App() {
             const sbIdSet = new Set(supabaseCards.map((c) => c.id));
             const localOnlyCards = currentCards.filter((c) => !sbIdSet.has(c.id));
             const fullList = [...merged, ...localOnlyCards];
+            
+            // Ensure the golden epic card from DEFAULT_CARDS is included if not yet present
+            const goldenCard = DEFAULT_CARDS.find((c) => c.rarity === 'golden_epic');
+            if (goldenCard && !fullList.some((c) => c.id === goldenCard.id || c.rarity === 'golden_epic')) {
+              fullList.push(goldenCard);
+            }
+
             saveCardsToIndexedDb(fullList, 'builder_cards');
             return fullList;
           });
@@ -1021,6 +1029,11 @@ const getInitialBuilderView = (): BuilderViewMode => {
         {/* VIEW 5: GIFT CODES (Generar y Administrar Códigos de Regalo de Sobres) */}
         {currentView === 'gift_codes' && (
           <GiftCodesView onShowToast={showToast} />
+        )}
+
+        {/* VIEW 6: TOKKIIPASS (Gestión y Activación de TokkiiPass Premium 30 Días) */}
+        {currentView === 'tokkiipass' && (
+          <TokkiiPassAdminView onShowToast={showToast} />
         )}
       </main>
 

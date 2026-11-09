@@ -143,6 +143,7 @@ export const PackEditorPanel: React.FC<PackEditorPanelProps> = ({
       super_rare: 0,
       ultra_rare: 0,
       secret_rare: 0,
+      golden_epic: 0,
     };
 
     if (eligibleRarities.length === 1) {
@@ -151,11 +152,13 @@ export const PackEditorPanel: React.FC<PackEditorPanelProps> = ({
       slotRates.rare = 70;
       slotRates.super_rare = 20;
       slotRates.ultra_rare = 8;
-      slotRates.secret_rare = activeRule.enabledRarities.includes('secret_rare') ? 2 : 0;
+      slotRates.secret_rare = activeRule.enabledRarities.includes('secret_rare') ? 1.95 : 0;
+      slotRates.golden_epic = activeRule.enabledRarities.includes('golden_epic') ? 0.1 : 0;
     } else if (minRarity === 'super_rare') {
       slotRates.super_rare = 65;
       slotRates.ultra_rare = 25;
-      slotRates.secret_rare = activeRule.enabledRarities.includes('secret_rare') ? 10 : 0;
+      slotRates.secret_rare = activeRule.enabledRarities.includes('secret_rare') ? 9.9 : 0;
+      slotRates.golden_epic = activeRule.enabledRarities.includes('golden_epic') ? 0.1 : 0;
     } else {
       eligibleRarities.forEach((r) => {
         slotRates[r] = Math.round(100 / eligibleRarities.length);
@@ -209,59 +212,59 @@ export const PackEditorPanel: React.FC<PackEditorPanelProps> = ({
       newRules = {
         1: {
           enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare'],
-          dropRates: { common: 55, uncommon: 30, rare: 11, super_rare: 3.5, ultra_rare: 0.5, secret_rare: 0 },
+          dropRates: { common: 55, uncommon: 30, rare: 11, super_rare: 3.5, ultra_rare: 0.5, secret_rare: 0, golden_epic: 0 },
           guaranteedSlotMinRarity: 'none',
         },
         3: {
           enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare'],
-          dropRates: { common: 48, uncommon: 32, rare: 14, super_rare: 5, ultra_rare: 1, secret_rare: 0 },
+          dropRates: { common: 48, uncommon: 32, rare: 14, super_rare: 5, ultra_rare: 1, secret_rare: 0, golden_epic: 0 },
           guaranteedSlotMinRarity: 'rare',
-          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 75, super_rare: 20, ultra_rare: 5, secret_rare: 0 },
+          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 75, super_rare: 20, ultra_rare: 5, secret_rare: 0, golden_epic: 0 },
         },
         5: {
-          enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare', 'secret_rare'],
-          dropRates: { common: 40, uncommon: 32, rare: 17, super_rare: 7, ultra_rare: 3, secret_rare: 1 },
+          enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare', 'secret_rare', 'golden_epic'],
+          dropRates: { common: 40, uncommon: 32, rare: 17, super_rare: 7, ultra_rare: 2.9, secret_rare: 1, golden_epic: 0.1 },
           guaranteedSlotMinRarity: 'super_rare',
-          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 45, super_rare: 38, ultra_rare: 13, secret_rare: 4 },
+          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 45, super_rare: 38, ultra_rare: 12.8, secret_rare: 4, golden_epic: 0.2 },
         },
       };
     } else if (presetName === 'generous') {
       newRules = {
         1: {
           enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare', 'secret_rare'],
-          dropRates: { common: 35, uncommon: 30, rare: 20, super_rare: 10, ultra_rare: 4, secret_rare: 1 },
+          dropRates: { common: 35, uncommon: 30, rare: 20, super_rare: 10, ultra_rare: 4, secret_rare: 1, golden_epic: 0 },
           guaranteedSlotMinRarity: 'none',
         },
         3: {
           enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare', 'secret_rare'],
-          dropRates: { common: 25, uncommon: 30, rare: 25, super_rare: 12, ultra_rare: 6, secret_rare: 2 },
+          dropRates: { common: 25, uncommon: 30, rare: 25, super_rare: 12, ultra_rare: 6, secret_rare: 2, golden_epic: 0 },
           guaranteedSlotMinRarity: 'rare',
-          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 40, super_rare: 35, ultra_rare: 18, secret_rare: 7 },
+          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 40, super_rare: 35, ultra_rare: 18, secret_rare: 7, golden_epic: 0 },
         },
         5: {
-          enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare', 'secret_rare'],
-          dropRates: { common: 20, uncommon: 25, rare: 25, super_rare: 18, ultra_rare: 8, secret_rare: 4 },
+          enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare', 'secret_rare', 'golden_epic'],
+          dropRates: { common: 20, uncommon: 25, rare: 25, super_rare: 18, ultra_rare: 7.9, secret_rare: 4, golden_epic: 0.1 },
           guaranteedSlotMinRarity: 'super_rare',
-          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 20, super_rare: 45, ultra_rare: 25, secret_rare: 10 },
+          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 20, super_rare: 45, ultra_rare: 24.8, secret_rare: 10, golden_epic: 0.2 },
         },
       };
     } else if (presetName === 'hardcore') {
       newRules = {
         1: {
           enabledRarities: ['common', 'uncommon', 'rare'],
-          dropRates: { common: 75, uncommon: 22, rare: 3, super_rare: 0, ultra_rare: 0, secret_rare: 0 },
+          dropRates: { common: 75, uncommon: 22, rare: 3, super_rare: 0, ultra_rare: 0, secret_rare: 0, golden_epic: 0 },
           guaranteedSlotMinRarity: 'none',
         },
         3: {
           enabledRarities: ['common', 'uncommon', 'rare', 'super_rare'],
-          dropRates: { common: 65, uncommon: 28, rare: 6, super_rare: 1, ultra_rare: 0, secret_rare: 0 },
+          dropRates: { common: 65, uncommon: 28, rare: 6, super_rare: 1, ultra_rare: 0, secret_rare: 0, golden_epic: 0 },
           guaranteedSlotMinRarity: 'none',
         },
         5: {
-          enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare', 'secret_rare'],
-          dropRates: { common: 55, uncommon: 32, rare: 9, super_rare: 3, ultra_rare: 0.8, secret_rare: 0.2 },
+          enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare', 'secret_rare', 'golden_epic'],
+          dropRates: { common: 55, uncommon: 32, rare: 9, super_rare: 3, ultra_rare: 0.78, secret_rare: 0.2, golden_epic: 0.02 },
           guaranteedSlotMinRarity: 'rare',
-          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 85, super_rare: 12, ultra_rare: 2.5, secret_rare: 0.5 },
+          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 85, super_rare: 12, ultra_rare: 2.45, secret_rare: 0.5, golden_epic: 0.05 },
         },
       };
     } else {
@@ -269,20 +272,20 @@ export const PackEditorPanel: React.FC<PackEditorPanelProps> = ({
       newRules = {
         1: {
           enabledRarities: ['common', 'uncommon', 'rare'],
-          dropRates: { common: 60, uncommon: 30, rare: 10, super_rare: 0, ultra_rare: 0, secret_rare: 0 },
+          dropRates: { common: 60, uncommon: 30, rare: 10, super_rare: 0, ultra_rare: 0, secret_rare: 0, golden_epic: 0 },
           guaranteedSlotMinRarity: 'none',
         },
         3: {
           enabledRarities: ['common', 'uncommon', 'rare', 'super_rare'],
-          dropRates: { common: 45, uncommon: 35, rare: 15, super_rare: 5, ultra_rare: 0, secret_rare: 0 },
+          dropRates: { common: 45, uncommon: 35, rare: 15, super_rare: 5, ultra_rare: 0, secret_rare: 0, golden_epic: 0 },
           guaranteedSlotMinRarity: 'rare',
-          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 70, super_rare: 30, ultra_rare: 0, secret_rare: 0 },
+          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 70, super_rare: 30, ultra_rare: 0, secret_rare: 0, golden_epic: 0 },
         },
         5: {
-          enabledRarities: ['super_rare', 'ultra_rare', 'secret_rare'],
-          dropRates: { common: 0, uncommon: 0, rare: 0, super_rare: 50, ultra_rare: 35, secret_rare: 15 },
+          enabledRarities: ['super_rare', 'ultra_rare', 'secret_rare', 'golden_epic'],
+          dropRates: { common: 0, uncommon: 0, rare: 0, super_rare: 50, ultra_rare: 35, secret_rare: 14.9, golden_epic: 0.1 },
           guaranteedSlotMinRarity: 'secret_rare',
-          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 0, super_rare: 0, ultra_rare: 40, secret_rare: 60 },
+          guaranteedSlotRates: { common: 0, uncommon: 0, rare: 0, super_rare: 0, ultra_rare: 40, secret_rare: 59.8, golden_epic: 0.2 },
         },
       };
     }

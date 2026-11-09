@@ -6585,5 +6585,58 @@ export const DEFAULT_EVIL_CARDS: CardData[] = [
       "Exploradora de tormentas"
     ],
     "edition": "eviltokkii"
+  },
+  {
+    "id": "eviltokkii-golden-epic-141",
+    "title": "EvilTokkii Dorada Épica",
+    "subtitle": "Reliquia de Canje Única • Edición Sombra",
+    "image": "/cards/tokkii_photographer.jpg",
+    "imageZoom": 1,
+    "imageOffsetX": 0,
+    "imageOffsetY": 0,
+    "imageRotation": 0,
+    "imageFit": "cover",
+    "rarity": "golden_epic",
+    "element": "leyenda",
+    "hp": 350,
+    "cardNumber": "141",
+    "totalInSet": "140",
+    "artist": "EvilTokkii Studio",
+    "flavorText": "Reliquia ancestral de oro maldito. Aquel que la posea desbloquea el canje prohibido y supremo de EvilTokkii.",
+    "abilityName": "🩸👑 Pacto de Oro Prohibido",
+    "abilityCost": [
+      "leyenda"
+    ],
+    "abilityDamage": "350",
+    "abilityDesc": "Canje único y exclusivo de la edición EvilTokkii. Válido para reclamar la recompensa dorada del abismo.",
+    "attacks": [
+      {
+        "id": "evil-atk-gold-141",
+        "name": "🩸👑 Eclipse Dorado Ancestral",
+        "cost": [
+          "leyenda",
+          "leyenda"
+        ],
+        "damage": "350",
+        "description": "Una llamarada de oro oscuro que consume el campo de batalla y otorga la victoria definitiva."
+      }
+    ],
+    "retreatCost": 2,
+    "weakness": "desafio",
+    "resistance": "estilo",
+    "isFullArt": true,
+    "borderColor": "#f59e0b",
+    "customHoloStyle": "golden_holo",
+    "customFoilOpacity": 1.0,
+    "customMaskOpacity": 0.35,
+    "dateAdded": "2026-11-06",
+    "tags": [
+      "EvilTokkii",
+      "Dorada Epica",
+      "leyenda",
+      "Reliquia de Canje Única",
+      "FullArt"
+    ],
+    "edition": "eviltokkii"
   }
 ];

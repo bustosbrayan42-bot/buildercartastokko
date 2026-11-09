@@ -7,6 +7,7 @@ export const ALL_RARITIES: Rarity[] = [
   'super_rare',
   'ultra_rare',
   'secret_rare',
+  'golden_epic',
 ];
 
 /**
@@ -19,8 +20,8 @@ export function getPackSizeRule(config: BoosterPackConfig, packSize: number): Pa
 
   // Fallback based on global dropRates
   const enabledRarities = ALL_RARITIES.filter((r) => {
-    // By default, secret rare is disabled in 1-card and 3-card packs unless configured
-    if (packSize < 5 && r === 'secret_rare') return false;
+    // By default, secret rare and golden epic are disabled in 1-card and 3-card packs unless configured
+    if (packSize < 5 && (r === 'secret_rare' || r === 'golden_epic')) return false;
     return true;
   });
 
@@ -45,6 +46,7 @@ export function normalizeRates(
     super_rare: 0,
     ultra_rare: 0,
     secret_rare: 0,
+    golden_epic: 0,
   };
 
   const activeSum = enabledRarities.reduce((sum, r) => sum + (rates[r] || 0), 0);
@@ -111,6 +113,7 @@ export function drawCardFromPack(
     super_rare: 0,
     ultra_rare: 0,
     secret_rare: 0,
+    golden_epic: 0,
   };
 
   let totalWeight = 0;
@@ -150,7 +153,17 @@ export function drawCardFromPack(
 
   // If no card exists in this rarity pool, search closest available rarity
   if (pool.length === 0) {
-    pool = cards;
+    const fallbackRarities: Rarity[] = ['secret_rare', 'ultra_rare', 'super_rare', 'rare', 'uncommon', 'common'];
+    for (const fr of fallbackRarities) {
+      const frPool = cards.filter((c) => c.rarity === fr);
+      if (frPool.length > 0) {
+        pool = frPool;
+        break;
+      }
+    }
+    if (pool.length === 0) {
+      pool = cards;
+    }
   }
 
   // Pick individual card from pool based on cardWeights (default weight = 1)
@@ -197,6 +210,7 @@ export function simulatePacks(
     super_rare: 0,
     ultra_rare: 0,
     secret_rare: 0,
+    golden_epic: 0,
   };
 
   const cardCounter: Record<string, { card: CardData; count: number }> = {};
@@ -222,6 +236,7 @@ export function simulatePacks(
     super_rare: 0,
     ultra_rare: 0,
     secret_rare: 0,
+    golden_epic: 0,
   };
 
   for (const r of ALL_RARITIES) {

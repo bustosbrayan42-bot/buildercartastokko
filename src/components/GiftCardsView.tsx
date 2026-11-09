@@ -47,6 +47,7 @@ export const GiftCardsView: React.FC<GiftCardsViewProps> = ({
     'super_rare',
     'ultra_rare',
     'secret_rare',
+    'golden_epic',
   ];
 
   const elements: CardElement[] = [

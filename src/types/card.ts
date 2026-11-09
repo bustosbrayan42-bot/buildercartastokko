@@ -1,6 +1,6 @@
 export type CardEdition = 'goodtokkii' | 'eviltokkii';
 
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'super_rare' | 'ultra_rare' | 'secret_rare';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'super_rare' | 'ultra_rare' | 'secret_rare' | 'golden_epic';
 
 export type CardElement =
   | 'arte'
@@ -14,7 +14,7 @@ export type CardElement =
   | 'rutina'
   | 'leyenda';
 
-export type HoloStyle = 'none' | 'silver' | 'prismatic' | 'gold_stars' | 'cosmic' | 'secret_gold' | 'glitter' | 'wave';
+export type HoloStyle = 'none' | 'silver' | 'prismatic' | 'gold_stars' | 'cosmic' | 'secret_gold' | 'glitter' | 'wave' | 'golden_holo';
 
 export interface CardAttack {
   id: string;

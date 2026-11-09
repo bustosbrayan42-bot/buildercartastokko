@@ -28,6 +28,7 @@ const RARITY_ORDER: Rarity[] = [
   'super_rare',
   'ultra_rare',
   'secret_rare',
+  'golden_epic',
 ];
 
 export const RarityConfigModal: React.FC<RarityConfigModalProps> = ({

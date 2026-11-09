@@ -6753,6 +6753,59 @@ export const DEFAULT_CARDS: CardData[] = [
     ],
     "weakness": "desafio",
     "resistance": "estilo"
+  },
+  {
+    "id": "goodtokkii-golden-epic-141",
+    "title": "GoodTokkii Dorada Épica",
+    "subtitle": "Carta de Canje Única • Edición Génesis",
+    "image": "/cards/Carta_Dorada.jpeg",
+    "imageZoom": 1,
+    "imageOffsetX": 0,
+    "imageOffsetY": 0,
+    "imageRotation": 0,
+    "imageFit": "cover",
+    "rarity": "golden_epic",
+    "element": "leyenda",
+    "hp": 350,
+    "cardNumber": "141",
+    "totalInSet": "140",
+    "artist": "Tokkii Studio",
+    "flavorText": "Carta única de canje oficial de Tokkii. Poseer esta reliquia dorada otorga el derecho a reclamar la recompensa suprema del canal.",
+    "abilityName": "✨👑 Canje Dorado Supremo",
+    "abilityCost": [
+      "leyenda"
+    ],
+    "abilityDamage": "300",
+    "abilityDesc": "Canje único y exclusivo de la edición Tokkii. Válido para reclamar la recompensa dorada del canal.",
+    "attacks": [
+      {
+        "id": "atk-gold-141",
+        "name": "✨👑 Resplandor Dorado Legendario",
+        "cost": [
+          "leyenda",
+          "leyenda"
+        ],
+        "damage": "300",
+        "description": "Un destello cegador forjado en oro puro que corona la colección."
+      }
+    ],
+    "retreatCost": 2,
+    "isFullArt": true,
+    "borderColor": "#ffd700",
+    "customHoloStyle": "golden_holo",
+    "customFoilOpacity": 1.0,
+    "customMaskOpacity": 0.35,
+    "dateAdded": "2026-11-06",
+    "tags": [
+      "Tokkii",
+      "Dorada Epica",
+      "Canje Unico",
+      "Génesis",
+      "FullArt"
+    ],
+    "weakness": "desafio",
+    "resistance": "rutina",
+    "edition": "goodtokkii"
   }
 ];
 
@@ -6772,6 +6825,7 @@ export const DEFAULT_PACK_CONFIG: BoosterPackConfig = {
     super_rare: 4.5,
     ultra_rare: 1.5,
     secret_rare: 0,
+    golden_epic: 0,
   },
   packSizeRules: {
     1: {
@@ -6783,6 +6837,7 @@ export const DEFAULT_PACK_CONFIG: BoosterPackConfig = {
         super_rare: 3.5,
         ultra_rare: 0.5,
         secret_rare: 0,
+        golden_epic: 0,
       },
       guaranteedSlotMinRarity: 'none',
       guaranteedSlotRates: {
@@ -6792,6 +6847,7 @@ export const DEFAULT_PACK_CONFIG: BoosterPackConfig = {
         super_rare: 3.5,
         ultra_rare: 0.5,
         secret_rare: 0,
+        golden_epic: 0,
       },
     },
     3: {
@@ -6803,6 +6859,7 @@ export const DEFAULT_PACK_CONFIG: BoosterPackConfig = {
         super_rare: 5,
         ultra_rare: 1,
         secret_rare: 0,
+        golden_epic: 0,
       },
       guaranteedSlotMinRarity: 'rare',
       guaranteedSlotRates: {
@@ -6812,17 +6869,19 @@ export const DEFAULT_PACK_CONFIG: BoosterPackConfig = {
         super_rare: 20,
         ultra_rare: 5,
         secret_rare: 0,
+        golden_epic: 0,
       },
     },
     5: {
-      enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare', 'secret_rare'],
+      enabledRarities: ['common', 'uncommon', 'rare', 'super_rare', 'ultra_rare', 'secret_rare', 'golden_epic'],
       dropRates: {
         common: 40,
         uncommon: 32,
         rare: 17,
         super_rare: 7,
-        ultra_rare: 3,
+        ultra_rare: 2.9,
         secret_rare: 1,
+        golden_epic: 0.1,
       },
       guaranteedSlotMinRarity: 'super_rare',
       guaranteedSlotRates: {
@@ -6830,8 +6889,9 @@ export const DEFAULT_PACK_CONFIG: BoosterPackConfig = {
         uncommon: 0,
         rare: 45,
         super_rare: 38,
-        ultra_rare: 13,
+        ultra_rare: 12.8,
         secret_rare: 4,
+        golden_epic: 0.2,
       },
     },
   },

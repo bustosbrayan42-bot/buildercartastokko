@@ -6,7 +6,7 @@ import { playPackTearSound, playLegendaryRevealSound, playSparkleSound, playCard
 import { resolveImageUrl } from '../utils/imageHelper';
 import { drawCardFromPack } from '../utils/probabilityEngine';
 import confetti from 'canvas-confetti';
-import { Sparkles, Package, RotateCcw, X, Scissors, ChevronRight } from 'lucide-react';
+import { Sparkles, Package, RotateCcw, X, Scissors, ChevronRight, Crown } from 'lucide-react';
 
 interface PackOpenerModalProps {
   cards: CardData[];
@@ -77,7 +77,15 @@ export const PackOpenerModal: React.FC<PackOpenerModalProps> = ({
     setTimeout(() => {
       setAnimState('revealing');
       const firstCard = newPulled[0];
-      if (
+      if (firstCard.rarity === 'golden_epic') {
+        if (config.soundEnabled) playLegendaryRevealSound();
+        confetti({
+          particleCount: 180,
+          spread: 95,
+          origin: { y: 0.5 },
+          colors: ['#ffd700', '#f59e0b', '#fbbf24', '#ffffff', '#eab308'],
+        });
+      } else if (
         firstCard.rarity === 'super_rare' ||
         firstCard.rarity === 'ultra_rare' ||
         firstCard.rarity === 'secret_rare'
@@ -92,6 +100,47 @@ export const PackOpenerModal: React.FC<PackOpenerModalProps> = ({
     }, 1350);
   };
 
+  const handleSimulateGoldenDrop = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (animState !== 'unopened') return;
+
+    setPackCardCount(5);
+    if (config.soundEnabled) playPackTearSound();
+
+    const goldenCard = cards.find((c) => c.rarity === 'golden_epic') || cards.find((c) => c.cardNumber === '141') || cards[0];
+    const nonGolden = cards.filter((c) => c.rarity !== 'golden_epic');
+    const pool = nonGolden.length > 0 ? nonGolden : cards;
+    const newPulled: CardData[] = [];
+    for (let slot = 0; slot < 4; slot++) {
+      newPulled.push(pool[Math.floor(Math.random() * pool.length)]);
+    }
+    newPulled.push(goldenCard);
+
+    setPulledCards(newPulled);
+    setCurrentCardIndex(0);
+
+    setAnimState('tearing');
+
+    setTimeout(() => {
+      setAnimState('sliding');
+      playSparkleSound();
+    }, 600);
+
+    setTimeout(() => {
+      setAnimState('revealing');
+      const firstCard = newPulled[0];
+      if (firstCard.rarity === 'golden_epic') {
+        if (config.soundEnabled) playLegendaryRevealSound();
+        confetti({
+          particleCount: 180,
+          spread: 95,
+          origin: { y: 0.5 },
+          colors: ['#ffd700', '#f59e0b', '#fbbf24', '#ffffff', '#eab308'],
+        });
+      }
+    }, 1350);
+  };
+
   const handleNextCard = () => {
     if (currentCardIndex < pulledCards.length - 1) {
       playCardFlipSound();
@@ -99,7 +148,15 @@ export const PackOpenerModal: React.FC<PackOpenerModalProps> = ({
       setCurrentCardIndex(nextIdx);
 
       const nextCard = pulledCards[nextIdx];
-      if (
+      if (nextCard.rarity === 'golden_epic') {
+        if (config.soundEnabled) playLegendaryRevealSound();
+        confetti({
+          particleCount: 180,
+          spread: 95,
+          origin: { y: 0.5 },
+          colors: ['#ffd700', '#f59e0b', '#fbbf24', '#ffffff', '#eab308'],
+        });
+      } else if (
         nextCard.rarity === 'super_rare' ||
         nextCard.rarity === 'ultra_rare' ||
         nextCard.rarity === 'secret_rare'
@@ -151,22 +208,35 @@ export const PackOpenerModal: React.FC<PackOpenerModalProps> = ({
 
               {/* CARD COUNT SELECTOR BUTTONS (1, 3, 5) */}
               {animState === 'unopened' && (
-                <div className="flex items-center justify-center gap-2 pt-1">
-                  <span className="text-xs font-bold text-slate-400 mr-1">Cartas por sobre:</span>
-                  {[1, 3, 5].map((count) => (
-                    <button
-                      key={count}
-                      type="button"
-                      onClick={() => setPackCardCount(count)}
-                      className={`px-3 py-1 rounded-xl text-xs font-black transition-all border ${
-                        packCardCount === count
-                          ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md scale-105'
-                          : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'
-                      }`}
-                    >
-                      {count} {count === 1 ? 'Carta' : 'Cartas'}
-                    </button>
-                  ))}
+                <div className="flex flex-col items-center gap-2 pt-1">
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-xs font-bold text-slate-400 mr-1">Cartas por sobre:</span>
+                    {[1, 3, 5].map((count) => (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => setPackCardCount(count)}
+                        className={`px-3 py-1 rounded-xl text-xs font-black transition-all border ${
+                          packCardCount === count
+                            ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md scale-105'
+                            : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'
+                        }`}
+                      >
+                        {count} {count === 1 ? 'Carta' : 'Cartas'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* BOTÓN SIMULADOR DORADO */}
+                  <button
+                    type="button"
+                    onClick={handleSimulateGoldenDrop}
+                    className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-400/30 to-amber-500/20 hover:from-amber-500/30 hover:via-yellow-400/40 hover:to-amber-500/30 border border-[#ffd700] text-[#fef08a] hover:text-white font-black text-xs transition-all shadow-[0_0_15px_rgba(255,215,0,0.25)] hover:scale-105 active:scale-95 cursor-pointer mx-auto mt-1"
+                  >
+                    <Crown className="w-3.5 h-3.5 text-[#ffd700] animate-bounce" />
+                    <span>🧪 Probar Simulador: Tirada Carta Dorada Garantizada</span>
+                    <Sparkles className="w-3.5 h-3.5 text-[#ffd700]" />
+                  </button>
                 </div>
               )}
             </div>
@@ -305,6 +375,19 @@ export const PackOpenerModal: React.FC<PackOpenerModalProps> = ({
                 <h2 className="text-2xl sm:text-3xl font-black text-white">
                   {activeCard.title}
                 </h2>
+
+                {activeCard.rarity === 'golden_epic' && (
+                  <div className="mt-2 bg-gradient-to-r from-amber-500/20 via-yellow-400/30 to-amber-500/20 border-2 border-[#ffd700] rounded-2xl px-4 py-2 text-center max-w-md mx-auto shadow-[0_0_25px_rgba(255,215,0,0.35)] animate-in zoom-in-95">
+                    <div className="flex items-center justify-center gap-1.5 text-[#ffd700] text-xs font-black uppercase tracking-wider">
+                      <Crown className="w-4 h-4 text-[#ffd700] animate-bounce" />
+                      <span>¡Desbloqueo Supremo del Álbum!</span>
+                      <Sparkles className="w-4 h-4 text-[#ffd700]" />
+                    </div>
+                    <p className="text-[11px] text-[#fef9c3] mt-0.5 leading-snug">
+                      Al salir esta <strong className="text-[#ffd700]">Carta Dorada Épica</strong>, se desbloquea automáticamente todo el álbum de cartas (<strong>001 a 140</strong>) de la edición para el usuario.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Main 3D Card Stage */}

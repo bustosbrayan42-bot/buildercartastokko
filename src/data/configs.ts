@@ -88,6 +88,21 @@ export const DEFAULT_GOOD_RARITY_CONFIGS: Record<Rarity, RarityConfig> = {
     defaultGlareOpacity: 0.2,
     stars: 6,
     description: 'Acabado Masterpiece Full-Art con lámina prismática arcoíris (90% foil, 20% glare) y aura mítica.'
+  },
+  golden_epic: {
+    id: 'golden_epic',
+    name: 'Dorada Épica',
+    shortName: 'DÉ',
+    color: '#ffd700',
+    gradient: 'from-amber-300 via-yellow-400 to-amber-600',
+    glowColor: 'rgba(255, 215, 0, 0.95)',
+    borderColor: '#ffd700',
+    badgeBg: 'bg-amber-950/90 text-amber-200 border-amber-400 shadow-[0_0_12px_rgba(255,215,0,0.6)]',
+    defaultHoloStyle: 'golden_holo',
+    defaultFoilOpacity: 1.0,
+    defaultGlareOpacity: 0.35,
+    stars: 7,
+    description: 'Carta de Canje Única: Acabado dorado legendario con lámina holográfica dorada resplandeciente y brillo estelar.'
   }
 };
 
@@ -179,6 +194,21 @@ export const DEFAULT_EVIL_RARITY_CONFIGS: Record<Rarity, RarityConfig> = {
     defaultGlareOpacity: 0.25,
     stars: 6,
     description: 'La cumbre de la oscuridad: una manifestación legendaria sin límites.'
+  },
+  golden_epic: {
+    id: 'golden_epic',
+    name: 'Dorada Épica',
+    shortName: 'DÉ',
+    color: '#f59e0b',
+    gradient: 'from-amber-400 via-yellow-500 to-red-900',
+    glowColor: 'rgba(245, 158, 11, 0.95)',
+    borderColor: '#f59e0b',
+    badgeBg: 'bg-amber-950/95 text-amber-300 border-amber-500 shadow-[0_0_14px_rgba(245,158,11,0.6)]',
+    defaultHoloStyle: 'golden_holo',
+    defaultFoilOpacity: 1.0,
+    defaultGlareOpacity: 0.35,
+    stars: 7,
+    description: 'Reliquia de Canje Única: Oro maldito ancestral con reflejos holográficos dorados resplandecientes.'
   }
 };
 
@@ -194,7 +224,11 @@ export const getRarityConfigsForEdition = (edition: CardEdition): Record<Rarity,
     const saved = localStorage.getItem(key);
     if (saved) {
       const parsed = JSON.parse(saved);
-      return { ...baseDefaults, ...parsed };
+      return {
+        ...baseDefaults,
+        ...parsed,
+        golden_epic: parsed.golden_epic || baseDefaults.golden_epic,
+      };
     }
   } catch (e) {
     console.error(`Error loading rarity configs for ${edition}:`, e);
