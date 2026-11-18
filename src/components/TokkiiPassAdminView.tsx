@@ -79,11 +79,15 @@ export const TokkiiPassAdminView: React.FC<TokkiiPassAdminViewProps> = ({ onShow
       const userName = user.display_name || user.username || 'Usuario';
       const newStatus = getPremiumStatus(res.expiresAt);
 
-      if (isAlreadyActive) {
-        onShowToast(`👑 ¡Se sumaron +${days} días a ${userName}! Ahora tiene ${newStatus.daysRemaining} días restantes (Válido hasta ${newStatus.formattedDate}).`);
-      } else {
-        onShowToast(`👑 ¡TokkiiPass Premium activado por ${days} días para ${userName}! (Válido hasta ${newStatus.formattedDate}).`);
+      let msg = isAlreadyActive
+        ? `👑 ¡Se sumaron +${days} días a ${userName}! Ahora tiene ${newStatus.daysRemaining} días restantes (Válido hasta ${newStatus.formattedDate}).`
+        : `👑 ¡TokkiiPass Premium activado por ${days} días para ${userName}! (Válido hasta ${newStatus.formattedDate}).`;
+
+      if (res.bonusGranted) {
+        msg += ` 🎁 Además, como ya había reclamado la recompensa diaria de hoy, se le acreditó su recompensa extra de TokkiiPass (${res.bonusGranted}).`;
       }
+
+      onShowToast(msg);
       await loadUsers();
     } catch (err: any) {
       console.error('Error activating TokkiiPass Premium:', err);

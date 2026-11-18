@@ -163,7 +163,7 @@ export const activateTokkiiPassPremium = async (
   userId: string,
   days: number = 30,
   currentExpiresAt?: string | null
-): Promise<{ expiresAt: string; daysAdded: number }> => {
+): Promise<{ expiresAt: string; daysAdded: number; bonusGranted?: string | null }> => {
   if (!userId) throw new Error('Usuario inválido.');
 
   const now = new Date();
@@ -233,7 +233,66 @@ export const activateTokkiiPassPremium = async (
     }
   }
 
-  return { expiresAt: newExpirationIso, daysAdded: days };
+  // 3. Comprobar si el usuario ya reclamó su recompensa diaria de hoy antes de tener el pase activo
+  let bonusGranted: string | null = null;
+  try {
+    const todayObj = new Date();
+    const yyyy = todayObj.getFullYear();
+    const mm = String(todayObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(todayObj.getDate()).padStart(2, '0');
+    const todayDateKey = `${yyyy}-${mm}-${dd}`;
+    const cardTag = `DAILY_LOGIN:${todayDateKey}`;
+
+    // Buscar si existe el registro de reclamo de hoy
+    const { data: claimRow } = await supabaseAuth
+      .from('user_cards')
+      .select('id, source, count')
+      .eq('user_id', userId)
+      .eq('card_id', cardTag)
+      .maybeSingle();
+
+    // Si ya reclamó hoy pero sin el bonus de TokkiiPass (source no es 'daily_login_premium')
+    if (claimRow && claimRow.source !== 'daily_login_premium') {
+      const isSunday = todayObj.getDay() === 0;
+      const totalDaysInMonth = new Date(todayObj.getFullYear(), todayObj.getMonth() + 1, 0).getDate();
+      const isMonthEnd = todayObj.getDate() === totalDaysInMonth;
+      const dayOfWeek = todayObj.getDay();
+
+      if (isSunday) {
+        // Domingo Premium: ¡5 Sobres Legendarios de 5 Cartas!
+        await grantPacksToUser(userId, 'pack_5', 5);
+        bonusGranted = '+5 Sobres Legendarios (5 Cartas)';
+      } else if (isMonthEnd) {
+        // Fin de mes: +1 Sobre Legendario de 5 Cartas
+        await grantPacksToUser(userId, 'pack_5', 1);
+        bonusGranted = '+1 Sobre Legendario (5 Cartas) Duplicado';
+      } else if (dayOfWeek === 5) {
+        // Viernes: +1 Sobre de 3 Cartas
+        await grantPacksToUser(userId, 'pack_3', 1);
+        bonusGranted = '+1 Sobre Estándar (3 Cartas) Duplicado';
+      } else if (dayOfWeek === 3 || dayOfWeek === 6) {
+        // Miércoles o Sábado (Ruleta de Azar): sobre estándar duplicado
+        await grantPacksToUser(userId, 'pack_3', 1);
+        bonusGranted = '+1 Sobre Estándar (3 Cartas) Duplicado';
+      } else {
+        // Lunes, Martes, Jueves: +1 Sobre Básico
+        await grantPacksToUser(userId, 'pack_1', 1);
+        bonusGranted = '+1 Sobre Básico (1 Carta) Duplicado';
+      }
+
+      // Actualizar el registro a 'daily_login_premium' para que no vuelva a otorgarse
+      await supabaseAuth
+        .from('user_cards')
+        .update({
+          source: 'daily_login_premium',
+        })
+        .eq('id', claimRow.id);
+    }
+  } catch (bonusErr) {
+    console.warn('Error checking/granting daily login bonus on activation:', bonusErr);
+  }
+
+  return { expiresAt: newExpirationIso, daysAdded: days, bonusGranted };
 };
 
 /**
